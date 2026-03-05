@@ -50,6 +50,8 @@ export function Files() {
   const [multiSelect,     setMultiSelect]     = useState(false);
   const [selectedFiles,   setSelectedFiles]   = useState<Set<string>>(new Set());
   const [bulkMove,        setBulkMove]        = useState<BulkMoveState | null>(null);
+  const [draggedFile,     setDraggedFile]     = useState<string | null>(null);
+  const [dropTarget,      setDropTarget]      = useState<string | null>(null);
 
   const fileRef   = useRef<HTMLInputElement>(null);
   const folderRef = useRef<HTMLInputElement>(null);
@@ -139,6 +141,22 @@ export function Files() {
     setTimeout(() => setUploadMsg(null), 4000);
     exitMultiSelect();
     await load();
+  };
+
+  const handleDropToFolder = async (theme: string, sub: string, filename: string) => {
+    const file = files.find(f => f.name === filename);
+    if (file?.theme === theme && file?.subfolder === sub) return;
+    setBusyFile(filename);
+    try {
+      await moveDocument(filename, theme, sub || null);
+      await load();
+      setUploadMsg(`✅ « ${filename} » déplacé vers ${theme} / ${sub}`);
+      setTimeout(() => setUploadMsg(null), 3000);
+    } catch (e: any) {
+      setError(e.message ?? 'Erreur de déplacement');
+    } finally {
+      setBusyFile(null);
+    }
   };
 
   const handleGenerateRevision = async (file: IndexedFile, mode: 'flashcard' | 'quiz' | 'summary') => {
@@ -507,10 +525,20 @@ export function Files() {
                         const subFiles = themeFiles.filter(f => f.subfolder === sub);
                         const subKey = `${theme.key}/${sub}`;
                         const isSubExpanded = expandedSubs.has(subKey);
+                        const isDropTarget = dropTarget === subKey && !!draggedFile;
 
                         return (
-                          <div key={sub} style={{ borderBottom: '1px solid var(--color-card2)' }}>
-                            <div className="group/folder flex items-center hover:bg-white/3 transition-colors">
+                          <div
+                            key={sub}
+                            style={{ borderBottom: '1px solid var(--color-card2)' }}
+                            onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDropTarget(subKey); }}
+                            onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDropTarget(null); }}
+                            onDrop={e => { e.preventDefault(); if (draggedFile) handleDropToFolder(theme.key, sub, draggedFile); setDropTarget(null); setDraggedFile(null); }}
+                          >
+                            <div
+                              className={`group/folder flex items-center transition-colors ${!isDropTarget ? 'hover:bg-white/3' : ''}`}
+                              style={isDropTarget ? { backgroundColor: `color-mix(in srgb, ${theme.color} 15%, var(--color-card2))`, outline: `2px dashed ${theme.color}`, outlineOffset: '-2px', borderRadius: '4px' } : undefined}
+                            >
                               <button
                                 onClick={() => toggleSub(subKey)}
                                 className="flex-1 flex items-center gap-3 px-5 py-3"
@@ -545,6 +573,7 @@ export function Files() {
                                 moveDialog={moveDialog}
                                 multiSelect={multiSelect}
                                 selected={selectedFiles.has(file.name)}
+                                isDragging={draggedFile === file.name}
                                 onToggleSelect={toggleSelectFile}
                                 onDelete={handleDelete}
                                 onOpenMove={openMove}
@@ -557,6 +586,8 @@ export function Files() {
                                 onChangeMoveSubfolder={(s) => setMoveDialog(prev => prev ? { ...prev, subfolder: s } : null)}
                                 getAllSubs={getAllSubs}
                                 onGenerateRevision={handleGenerateRevision}
+                                onDragStart={setDraggedFile}
+                                onDragEnd={() => { setDraggedFile(null); setDropTarget(null); }}
                               />
                             ))}
                           </div>
@@ -569,9 +600,18 @@ export function Files() {
                         if (unclassified.length === 0) return null;
                         const subKey = `${theme.key}/__other__`;
                         const isSubExpanded = expandedSubs.has(subKey);
+                        const isDropTarget = dropTarget === subKey && !!draggedFile;
                         return (
-                          <div style={{ borderBottom: '1px solid var(--color-card2)' }}>
-                            <div className="group/folder flex items-center hover:bg-white/3 transition-colors">
+                          <div
+                            style={{ borderBottom: '1px solid var(--color-card2)' }}
+                            onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDropTarget(subKey); }}
+                            onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDropTarget(null); }}
+                            onDrop={e => { e.preventDefault(); if (draggedFile) handleDropToFolder(theme.key, '', draggedFile); setDropTarget(null); setDraggedFile(null); }}
+                          >
+                            <div
+                              className={`group/folder flex items-center transition-colors ${!isDropTarget ? 'hover:bg-white/3' : ''}`}
+                              style={isDropTarget ? { backgroundColor: `color-mix(in srgb, ${theme.color} 15%, var(--color-card2))`, outline: `2px dashed ${theme.color}`, outlineOffset: '-2px', borderRadius: '4px' } : undefined}
+                            >
                               <button onClick={() => toggleSub(subKey)} className="flex-1 flex items-center gap-3 px-5 py-3">
                                 <span>📂</span>
                                 <span className="flex-1 text-left text-sm text-slate-500 italic">Non classé</span>
@@ -594,6 +634,7 @@ export function Files() {
                                 moveDialog={moveDialog}
                                 multiSelect={multiSelect}
                                 selected={selectedFiles.has(file.name)}
+                                isDragging={draggedFile === file.name}
                                 onToggleSelect={toggleSelectFile}
                                 onDelete={handleDelete}
                                 onOpenMove={openMove}
@@ -606,6 +647,8 @@ export function Files() {
                                 onGenerateRevision={handleGenerateRevision}
                                 onChangeMoveSubfolder={(s) => setMoveDialog(prev => prev ? { ...prev, subfolder: s } : null)}
                                 getAllSubs={getAllSubs}
+                                onDragStart={setDraggedFile}
+                                onDragEnd={() => { setDraggedFile(null); setDropTarget(null); }}
                               />
                             ))}
                           </div>
@@ -828,6 +871,7 @@ interface FileRowProps {
   moveDialog: MoveDialog | null;
   multiSelect: boolean;
   selected: boolean;
+  isDragging: boolean;
   onToggleSelect: (name: string) => void;
   onDelete: (name: string) => void;
   onOpenMove: (file: IndexedFile) => void;
@@ -837,10 +881,12 @@ interface FileRowProps {
   onChangeMoveSubfolder: (sub: string) => void;
   getAllSubs: (theme: string) => string[];
   onGenerateRevision: (file: IndexedFile, mode: 'flashcard' | 'quiz' | 'summary') => void;
+  onDragStart: (filename: string) => void;
+  onDragEnd: () => void;
 }
 
 
-function FileRow({ file, busy, moveDialog, multiSelect, selected, onToggleSelect, onDelete, onOpenMove, onMove, onCancelMove, onChangeMoveTheme, onChangeMoveSubfolder, getAllSubs, onGenerateRevision }: FileRowProps) {
+function FileRow({ file, busy, moveDialog, multiSelect, selected, isDragging, onToggleSelect, onDelete, onOpenMove, onMove, onCancelMove, onChangeMoveTheme, onChangeMoveSubfolder, getAllSubs, onGenerateRevision, onDragStart, onDragEnd }: FileRowProps) {
   const isMoving = moveDialog?.filename === file.name;
 
   const menuItems: ContextMenuItem[] = [
@@ -853,10 +899,16 @@ function FileRow({ file, busy, moveDialog, multiSelect, selected, onToggleSelect
   ];
 
   return (
-    <div className="group">
+    <div
+      className="group"
+      draggable={!multiSelect}
+      onDragStart={e => { if (multiSelect) { e.preventDefault(); return; } e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', file.name); onDragStart(file.name); }}
+      onDragEnd={onDragEnd}
+      style={{ opacity: isDragging ? 0.4 : 1, cursor: multiSelect ? 'pointer' : 'grab' }}
+    >
       <div
         className="flex items-center gap-3 px-8 py-2.5 hover:bg-white/3 transition-colors"
-        style={selected ? { backgroundColor: 'rgba(37,99,235,0.12)', cursor: 'pointer' } : multiSelect ? { cursor: 'pointer' } : undefined}
+        style={selected ? { backgroundColor: 'rgba(37,99,235,0.12)' } : undefined}
         onClick={multiSelect ? () => onToggleSelect(file.name) : undefined}
       >
         {multiSelect && (
