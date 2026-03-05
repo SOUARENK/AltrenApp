@@ -140,6 +140,17 @@ export async function getChatHistory(): Promise<Conversation[]> {
   }));
 }
 
+export async function searchConversations(q: string): Promise<Conversation[]> {
+  const res = await request<any>(`/chat/search?q=${encodeURIComponent(q)}`, { headers: getHeaders() });
+  return (res.conversations ?? []).map((c: any) => ({
+    id: c.id,
+    title: c.title,
+    createdAt: c.created_at,
+    updatedAt: c.updated_at,
+    messages: [],
+  }));
+}
+
 export async function deleteConversation(id: string): Promise<void> {
   await request<void>(`/chat/history/${id}`, { method: 'DELETE', headers: getHeaders() });
 }

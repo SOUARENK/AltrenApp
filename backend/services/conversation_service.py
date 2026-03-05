@@ -98,6 +98,28 @@ def delete_conversation(conversation_id: str) -> bool:
     return deleted
 
 
+def search_conversations(query: str) -> list[dict]:
+    """Recherche les conversations dont les messages contiennent le terme."""
+    client = _get_client()
+    msg_result = (
+        client.table("messages")
+        .select("conversation_id")
+        .ilike("content", f"%{query}%")
+        .execute()
+    )
+    if not msg_result.data:
+        return []
+    conv_ids = list({r["conversation_id"] for r in msg_result.data})
+    conv_result = (
+        client.table("conversations")
+        .select("id, title, created_at, updated_at")
+        .in_("id", conv_ids)
+        .order("updated_at", desc=True)
+        .execute()
+    )
+    return conv_result.data or []
+
+
 def get_conversation_with_messages(conversation_id: str) -> dict | None:
     client = _get_client()
     conv_result = (

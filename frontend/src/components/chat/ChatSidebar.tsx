@@ -1,6 +1,7 @@
-import { useRef, useState } from 'react';
-import { Plus, Upload, MessageSquare, Trash2, FolderOpen, Search } from 'lucide-react';
+import { useRef, useState, useEffect } from 'react';
+import { Plus, Upload, MessageSquare, Trash2, FolderOpen, Search, Loader2 } from 'lucide-react';
 import type { Conversation } from '../../types';
+import { searchConversations } from '../../services/api';
 
 function groupByDate(convs: Conversation[]): { label: string; items: Conversation[] }[] {
   const now = new Date();
@@ -49,6 +50,27 @@ export function ChatSidebar({
   const fileRef = useRef<HTMLInputElement>(null);
   const folderRef = useRef<HTMLInputElement>(null);
   const [search, setSearch] = useState('');
+  const [searchResults, setSearchResults] = useState<Conversation[] | null>(null);
+  const [searching, setSearching] = useState(false);
+
+  useEffect(() => {
+    if (!search.trim() || search.trim().length < 2) {
+      setSearchResults(null);
+      return;
+    }
+    setSearching(true);
+    const timer = setTimeout(async () => {
+      try {
+        const results = await searchConversations(search.trim());
+        setSearchResults(results);
+      } catch {
+        setSearchResults([]);
+      } finally {
+        setSearching(false);
+      }
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -57,10 +79,8 @@ export function ChatSidebar({
     e.target.value = '';
   };
 
-  const filtered = search.trim()
-    ? history.filter(c => (c.title ?? '').toLowerCase().includes(search.toLowerCase()))
-    : history;
-  const groups = groupByDate(filtered);
+  const displayed = searchResults ?? history;
+  const groups = groupByDate(displayed);
 
   return (
     <div
@@ -83,7 +103,10 @@ export function ChatSidebar({
       {/* Recherche */}
       <div className="px-3 pt-3 pb-2">
         <div className="flex items-center gap-2 rounded-lg px-3 py-1.5" style={{ backgroundColor: 'var(--color-input)', border: '1px solid var(--color-input-border)' }}>
-          <Search size={13} style={{ color: '#64748b', flexShrink: 0 }} />
+          {searching
+            ? <Loader2 size={13} className="animate-spin shrink-0" style={{ color: '#64748b' }} />
+            : <Search size={13} style={{ color: '#64748b', flexShrink: 0 }} />
+          }
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
@@ -96,7 +119,7 @@ export function ChatSidebar({
 
       {/* Conversations */}
       <div className="flex-1 overflow-y-auto px-2 pb-2">
-        {filtered.length === 0 ? (
+        {displayed.length === 0 ? (
           <p className="text-xs text-slate-600 px-2 pt-4 text-center">
             {search.trim() ? 'Aucun résultat.' : <>Aucune conversation.<br />Posez une question pour commencer.</>}
           </p>

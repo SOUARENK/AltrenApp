@@ -24,6 +24,7 @@ from services.conversation_service import (
     delete_conversation,
     get_conversation_with_messages,
     get_conversations,
+    search_conversations,
 )
 from services.llm_service import generate_answer
 from services.rag_engine import (
@@ -133,6 +134,19 @@ async def get_conversation(conversation_id: str) -> ConversationDetail:
     except Exception as exc:
         logger.exception("Erreur conversation %s : %s", conversation_id, exc)
         raise HTTPException(status_code=500, detail="Erreur interne du serveur.") from exc
+
+
+@router.get("/chat/search")
+async def search_chat(q: str):
+    """Recherche dans le contenu des messages des conversations."""
+    if not q or len(q.strip()) < 2:
+        return {"conversations": []}
+    try:
+        results = search_conversations(q.strip())
+        return {"conversations": [ConversationSummary(**c).model_dump() for c in results]}
+    except Exception as exc:
+        logger.exception("Erreur recherche conversations : %s", exc)
+        raise HTTPException(status_code=500, detail="Erreur recherche.") from exc
 
 
 @router.delete("/chat/history/{conversation_id}")
