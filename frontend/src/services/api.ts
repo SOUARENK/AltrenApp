@@ -181,7 +181,7 @@ export async function getAgendaEvents(start: string, end: string): Promise<Agend
     title: e.title,
     start: e.start,
     end: e.end,
-    source: e.source === 'ent' || e.source === 'google_calendar' ? 'ecole' : e.source === 'jira' ? 'perso' : 'entreprise',
+    source: e.source === 'ent' || e.source === 'google_calendar' || e.source === 'teams' ? 'ecole' : e.source === 'jira' ? 'perso' : 'entreprise',
     description: e.description,
     location: e.location,
   }));
@@ -191,7 +191,7 @@ export async function getAgendaToday(): Promise<TodaySummary> {
   const res = await request<any>('/agenda/today');
   const toEvent = (e: any): AgendaEvent => ({
     id: e.id, title: e.title, start: e.start, end: e.end,
-    source: e.source === 'ent' ? 'ecole' : 'entreprise',
+    source: e.source === 'ent' || e.source === 'teams' ? 'ecole' : e.source === 'jira' ? 'perso' : 'entreprise',
     description: e.description, location: e.location,
   });
   return {
