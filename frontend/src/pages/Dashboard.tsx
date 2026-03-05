@@ -18,7 +18,7 @@ const QUICK_LINKS = [
   { to: '/revision', icon: BookOpen, label: 'Révision', desc: 'Flashcards & QCM', color: '#16a34a' },
 ];
 
-interface LocalTask { id: string; text: string; done: boolean; dueDate?: string; }
+interface LocalTask { id: string; text: string; done: boolean; dueDate?: string; dueTime?: string; }
 
 function isNearDeadline(dueDate?: string): boolean {
   if (!dueDate) return false;
@@ -69,6 +69,7 @@ export function Dashboard() {
   const [addingTask, setAddingTask] = useState(false);
   const [newTaskText, setNewTaskText] = useState('');
   const [newTaskDate, setNewTaskDate] = useState('');
+  const [newTaskTime, setNewTaskTime] = useState('');
   const dragSrcIdx = useRef<number | null>(null);
 
   useEffect(() => {
@@ -78,17 +79,21 @@ export function Dashboard() {
   const addTask = () => {
     if (!newTaskText.trim()) return;
     const id = crypto.randomUUID();
-    const task: LocalTask = { id, text: newTaskText.trim(), done: false, dueDate: newTaskDate || undefined };
+    const task: LocalTask = { id, text: newTaskText.trim(), done: false, dueDate: newTaskDate || undefined, dueTime: newTaskTime || undefined };
     setLocalTasks(prev => [task, ...prev]);
     if (newTaskDate) {
       try {
         const stored = JSON.parse(localStorage.getItem('local_agenda_events') ?? '[]');
-        stored.push({ id: `task-${id}`, title: `📋 ${newTaskText.trim()}`, start: `${newTaskDate}T08:00:00`, end: `${newTaskDate}T09:00:00`, source: 'perso', description: 'Tâche depuis le tableau de bord' });
+        const t = newTaskTime || '08:00';
+        const [h, m] = t.split(':').map(Number);
+        const endH = String(h + 1 < 24 ? h + 1 : 23).padStart(2, '0');
+        stored.push({ id: `task-${id}`, title: `📋 ${newTaskText.trim()}`, start: `${newTaskDate}T${t}:00`, end: `${newTaskDate}T${endH}:${String(m).padStart(2,'0')}:00`, source: 'perso', description: 'Tâche depuis le tableau de bord' });
         localStorage.setItem('local_agenda_events', JSON.stringify(stored));
       } catch {}
     }
     setNewTaskText('');
     setNewTaskDate('');
+    setNewTaskTime('');
     setAddingTask(false);
   };
   const toggleTask = (id: string) => setLocalTasks(prev => prev.map(t => t.id === id ? { ...t, done: !t.done } : t));
@@ -241,28 +246,38 @@ export function Dashboard() {
                 onChange={e => setNewTaskText(e.target.value)}
                 onKeyDown={e => {
                   if (e.key === 'Enter') addTask();
-                  if (e.key === 'Escape') { setAddingTask(false); setNewTaskText(''); setNewTaskDate(''); }
+                  if (e.key === 'Escape') { setAddingTask(false); setNewTaskText(''); setNewTaskDate(''); setNewTaskTime(''); }
                 }}
                 placeholder="Nouvelle tâche…"
                 className="w-full bg-transparent text-sm outline-none"
                 style={{ color: 'var(--color-text)' }}
               />
-              <div className="flex items-center gap-2">
-                <input
-                  type="date"
-                  value={newTaskDate}
-                  onChange={e => setNewTaskDate(e.target.value)}
-                  className="flex-1 bg-transparent text-xs outline-none rounded"
-                  style={{ color: newTaskDate ? 'var(--color-text)' : '#64748b', colorScheme: 'dark' }}
-                />
-                <span className="text-xs shrink-0" style={{ color: '#475569' }}>Date limite (optionnelle)</span>
+              <div className="space-y-1.5">
+                <p className="text-xs" style={{ color: '#475569' }}>Date limite (optionnelle)</p>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="date"
+                    value={newTaskDate}
+                    onChange={e => setNewTaskDate(e.target.value)}
+                    className="flex-1 text-xs rounded px-2 py-1 outline-none"
+                    style={{ colorScheme: 'dark', backgroundColor: 'var(--color-bg)', border: '1px solid var(--color-input-border)', color: 'var(--color-text)' }}
+                  />
+                  <input
+                    type="time"
+                    value={newTaskTime}
+                    onChange={e => setNewTaskTime(e.target.value)}
+                    disabled={!newTaskDate}
+                    className="w-24 text-xs rounded px-2 py-1 outline-none"
+                    style={{ colorScheme: 'dark', backgroundColor: 'var(--color-bg)', border: '1px solid var(--color-input-border)', color: newTaskDate ? 'var(--color-text)' : '#475569', opacity: newTaskDate ? 1 : 0.4 }}
+                  />
+                </div>
               </div>
               <div className="flex justify-end gap-2">
                 <button onClick={addTask} className="text-xs font-medium px-2 py-1 rounded" style={{ color: '#16a34a', backgroundColor: '#16a34a22' }}>
                   Ajouter
                 </button>
                 <button
-                  onClick={() => { setAddingTask(false); setNewTaskText(''); setNewTaskDate(''); }}
+                  onClick={() => { setAddingTask(false); setNewTaskText(''); setNewTaskDate(''); setNewTaskTime(''); }}
                   className="text-xs px-2 py-1 rounded transition-colors hover:text-white"
                   style={{ color: '#64748b' }}
                 >
@@ -322,7 +337,7 @@ export function Dashboard() {
                       </span>
                       {task.dueDate && (
                         <span className="text-xs" style={{ color: near && !task.done ? '#ef4444' : '#64748b' }}>
-                          📅 {formatTaskDate(task.dueDate)}{near && !task.done ? ' — Bientôt !' : ''}
+                          📅 {formatTaskDate(task.dueDate)}{task.dueTime ? ` à ${task.dueTime}` : ''}{near && !task.done ? ' — Bientôt !' : ''}
                         </span>
                       )}
                     </div>
