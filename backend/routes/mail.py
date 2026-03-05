@@ -68,3 +68,62 @@ async def get_email(message_id: str):
         raise HTTPException(status_code=401, detail="Outlook non connecté.")
     except Exception as exc:
         raise HTTPException(status_code=502, detail=str(exc))
+
+
+@router.patch("/mail/inbox/{message_id}/read")
+async def mark_email_read(message_id: str, payload: dict):
+    """Marque un mail comme lu ou non lu."""
+    try:
+        import httpx
+        from services.outlook_service import get_valid_token, GRAPH_BASE
+        token = get_valid_token()
+        is_read = payload.get("is_read", True)
+        headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+        r = httpx.patch(f"{GRAPH_BASE}/me/messages/{message_id}",
+                        headers=headers, json={"isRead": is_read}, timeout=15)
+        r.raise_for_status()
+        return {"ok": True, "is_read": is_read}
+    except ValueError:
+        raise HTTPException(status_code=401, detail="Outlook non connecté.")
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+
+
+@router.delete("/mail/inbox/{message_id}")
+async def delete_email(message_id: str):
+    """Supprime un mail (déplace dans la corbeille via Graph API)."""
+    try:
+        import httpx
+        from services.outlook_service import get_valid_token, GRAPH_BASE
+        token = get_valid_token()
+        headers = {"Authorization": f"Bearer {token}"}
+        r = httpx.delete(f"{GRAPH_BASE}/me/messages/{message_id}", headers=headers, timeout=15)
+        r.raise_for_status()
+        return {"ok": True}
+    except ValueError:
+        raise HTTPException(status_code=401, detail="Outlook non connecté.")
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+
+
+@router.post("/mail/inbox/{message_id}/reply")
+async def reply_to_email(message_id: str, payload: dict):
+    """Envoie une réponse à un mail."""
+    try:
+        import httpx
+        from services.outlook_service import get_valid_token, GRAPH_BASE
+        token = get_valid_token()
+        comment = payload.get("comment", "").strip()
+        if not comment:
+            raise HTTPException(status_code=400, detail="Le contenu de la réponse est vide.")
+        headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+        r = httpx.post(f"{GRAPH_BASE}/me/messages/{message_id}/reply",
+                       headers=headers, json={"comment": comment}, timeout=30)
+        r.raise_for_status()
+        return {"ok": True}
+    except HTTPException:
+        raise
+    except ValueError:
+        raise HTTPException(status_code=401, detail="Outlook non connecté.")
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=str(exc))

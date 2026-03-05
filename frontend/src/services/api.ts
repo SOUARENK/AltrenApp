@@ -407,3 +407,19 @@ export async function getMailMessage(id: string): Promise<MailMessage> {
   const res = await request<{ email: MailMessage }>(`/mail/inbox/${encodeURIComponent(id)}`);
   return res.email;
 }
+
+export async function markMailRead(id: string, isRead: boolean): Promise<void> {
+  await request(`/mail/inbox/${encodeURIComponent(id)}/read`, {
+    method: 'PATCH', headers: getHeaders(), body: JSON.stringify({ is_read: isRead }),
+  });
+}
+
+export async function deleteMail(id: string): Promise<void> {
+  await request(`/mail/inbox/${encodeURIComponent(id)}`, { method: 'DELETE', headers: getHeaders() });
+}
+
+export async function replyMail(id: string, comment: string): Promise<void> {
+  await request(`/mail/inbox/${encodeURIComponent(id)}/reply`, {
+    method: 'POST', headers: getHeaders(), body: JSON.stringify({ comment }),
+  });
+}

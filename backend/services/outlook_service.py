@@ -15,7 +15,7 @@ from services.rag_engine import chunk_pages, delete_by_filename, generate_embedd
 logger = logging.getLogger(__name__)
 
 GRAPH_BASE = "https://graph.microsoft.com/v1.0"
-SCOPES = ["Mail.Read", "Calendars.Read", "User.Read"]
+SCOPES = ["Mail.ReadWrite", "Mail.Send", "Calendars.Read", "User.Read"]
 OUTLOOK_MAIL_FILENAME = "outlook_mails_recus"
 OUTLOOK_SENT_FILENAME = "outlook_mails_envoyes"
 OUTLOOK_CAL_FILENAME = "outlook_calendrier"
