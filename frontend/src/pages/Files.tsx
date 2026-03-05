@@ -816,27 +816,39 @@ interface ContextMenuItem {
 
 function ContextMenu({ items }: { items: ContextMenuItem[] }) {
   const [open, setOpen] = useState(false);
-  const [openUpward, setOpenUpward] = useState(false);
+  const [menuStyle, setMenuStyle] = useState<React.CSSProperties>({});
   const ref = useRef<HTMLDivElement>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!open) return;
-    const handle = (e: MouseEvent) => {
+    const close = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     };
-    document.addEventListener('mousedown', handle);
-    return () => document.removeEventListener('mousedown', handle);
+    const closeOnScroll = () => setOpen(false);
+    document.addEventListener('mousedown', close);
+    document.addEventListener('scroll', closeOnScroll, true);
+    return () => {
+      document.removeEventListener('mousedown', close);
+      document.removeEventListener('scroll', closeOnScroll, true);
+    };
   }, [open]);
 
   const handleToggle = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!open && btnRef.current) {
       const rect = btnRef.current.getBoundingClientRect();
-      const itemCount = items.filter(i => !i.separator).length;
-      const sepCount  = items.filter(i =>  i.separator).length;
-      const estimatedHeight = itemCount * 38 + sepCount * 5 + 8;
-      setOpenUpward(window.innerHeight - rect.bottom < estimatedHeight);
+      const itemCount      = items.filter(i => !i.separator).length;
+      const sepCount       = items.filter(i =>  i.separator).length;
+      const estimatedH     = itemCount * 38 + sepCount * 5 + 8;
+      const spaceBelow     = window.innerHeight - rect.bottom;
+      const rightOffset    = window.innerWidth - rect.right;
+
+      if (spaceBelow < estimatedH) {
+        setMenuStyle({ position: 'fixed', bottom: window.innerHeight - rect.top + 4, right: rightOffset });
+      } else {
+        setMenuStyle({ position: 'fixed', top: rect.bottom + 4, right: rightOffset });
+      }
     }
     setOpen(o => !o);
   };
@@ -854,8 +866,16 @@ function ContextMenu({ items }: { items: ContextMenuItem[] }) {
       </button>
       {open && (
         <div
-          className={`absolute right-0 z-50 rounded-xl overflow-hidden shadow-xl ${openUpward ? 'bottom-8' : 'top-8'}`}
-          style={{ minWidth: '170px', backgroundColor: 'var(--color-card2)', border: '1px solid var(--color-input-border)' }}
+          style={{
+            ...menuStyle,
+            zIndex: 9999,
+            minWidth: '170px',
+            borderRadius: '12px',
+            overflow: 'hidden',
+            boxShadow: '0 20px 25px -5px rgba(0,0,0,0.5)',
+            backgroundColor: 'var(--color-card2)',
+            border: '1px solid var(--color-input-border)',
+          }}
         >
           {items.map((item, i) =>
             item.separator ? (
