@@ -146,7 +146,7 @@ export function Files() {
     setUploadMsg(`⏳ Génération ${label} pour « ${file.name} »…`);
     try {
       const apiMode: 'flashcard' | 'quiz' = mode === 'summary' ? 'flashcard' : mode;
-      const count = mode === 'summary' ? 20 : 10;
+      const count = mode === 'summary' ? 15 : 10;
       const result = await generateRevision({ mode: apiMode, filename: file.name, difficulty: 'medium', count });
       localStorage.setItem('revision_generated', JSON.stringify(result));
       navigate('/revision');
@@ -174,7 +174,7 @@ export function Files() {
     setUploadMsg(`⏳ Génération ${label} pour le dossier « ${folderLabel} »…`);
     try {
       const apiMode: 'flashcard' | 'quiz' = mode === 'summary' ? 'flashcard' : mode;
-      const count = mode === 'summary' ? 20 : 10;
+      const count = mode === 'summary' ? 15 : 10;
       const result = await generateRevision({
         mode: apiMode, theme,
         subfolder: sub === '__other__' ? undefined : sub,

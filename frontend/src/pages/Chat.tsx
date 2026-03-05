@@ -15,8 +15,6 @@ export function Chat() {
     messages,
     isLoading,
     error,
-    mode,
-    setMode,
     precision,
     setPrecision,
     send,
@@ -65,8 +63,6 @@ export function Chat() {
     <div className="flex h-full" style={{ backgroundColor: 'var(--color-bg)' }}>
       <ChatSidebar
         history={history}
-        mode={mode}
-        onModeChange={setMode}
         onNewChat={() => { clearMessages(); navigate('/chat'); }}
         onSelectConversation={handleSelectConversation}
         onDeleteConversation={handleDeleteConversation}

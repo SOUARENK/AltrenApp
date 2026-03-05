@@ -1,13 +1,6 @@
-import { useRef } from 'react';
-import { Plus, Upload, MessageSquare, Trash2, FolderOpen } from 'lucide-react';
-import type { Conversation, ChatMode } from '../../types';
-
-const MODES: { value: ChatMode; label: string }[] = [
-  { value: 'general', label: 'Général' },
-  { value: 'entreprise', label: 'Entreprise' },
-  { value: 'revision', label: 'Révision' },
-  { value: 'redaction', label: 'Rédaction' },
-];
+import { useRef, useState } from 'react';
+import { Plus, Upload, MessageSquare, Trash2, FolderOpen, Search } from 'lucide-react';
+import type { Conversation } from '../../types';
 
 function groupByDate(convs: Conversation[]): { label: string; items: Conversation[] }[] {
   const now = new Date();
@@ -38,8 +31,6 @@ function groupByDate(convs: Conversation[]): { label: string; items: Conversatio
 
 interface ChatSidebarProps {
   history: Conversation[];
-  mode: ChatMode;
-  onModeChange: (mode: ChatMode) => void;
   onNewChat: () => void;
   onSelectConversation: (id: string) => void;
   onDeleteConversation: (id: string) => void;
@@ -49,8 +40,6 @@ interface ChatSidebarProps {
 
 export function ChatSidebar({
   history,
-  mode,
-  onModeChange,
   onNewChat,
   onSelectConversation,
   onDeleteConversation,
@@ -59,6 +48,7 @@ export function ChatSidebar({
 }: ChatSidebarProps) {
   const fileRef = useRef<HTMLInputElement>(null);
   const folderRef = useRef<HTMLInputElement>(null);
+  const [search, setSearch] = useState('');
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -67,7 +57,10 @@ export function ChatSidebar({
     e.target.value = '';
   };
 
-  const groups = groupByDate(history);
+  const filtered = search.trim()
+    ? history.filter(c => (c.title ?? '').toLowerCase().includes(search.toLowerCase()))
+    : history;
+  const groups = groupByDate(filtered);
 
   return (
     <div
@@ -87,32 +80,25 @@ export function ChatSidebar({
         </button>
       </div>
 
-      {/* Mode */}
-      <div className="p-3" style={{ borderBottom: '1px solid var(--color-border)' }}>
-        <p className="text-xs font-medium text-slate-500 mb-2 uppercase tracking-wider">Mode</p>
-        <div className="grid grid-cols-2 gap-1">
-          {MODES.map(m => (
-            <button
-              key={m.value}
-              onClick={() => onModeChange(m.value)}
-              className="rounded-md px-2 py-1.5 text-xs font-medium transition-colors"
-              style={{
-                backgroundColor: mode === m.value ? '#2563eb' : 'transparent',
-                color: mode === m.value ? 'white' : '#64748b',
-                border: `1px solid ${mode === m.value ? '#2563eb' : 'var(--color-border)'}`,
-              }}
-            >
-              {m.label}
-            </button>
-          ))}
+      {/* Recherche */}
+      <div className="px-3 pt-3 pb-2">
+        <div className="flex items-center gap-2 rounded-lg px-3 py-1.5" style={{ backgroundColor: 'var(--color-input)', border: '1px solid var(--color-input-border)' }}>
+          <Search size={13} style={{ color: '#64748b', flexShrink: 0 }} />
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Rechercher…"
+            className="flex-1 bg-transparent text-xs outline-none"
+            style={{ color: 'var(--color-text)' }}
+          />
         </div>
       </div>
 
       {/* Conversations */}
       <div className="flex-1 overflow-y-auto px-2 pb-2">
-        {history.length === 0 ? (
+        {filtered.length === 0 ? (
           <p className="text-xs text-slate-600 px-2 pt-4 text-center">
-            Aucune conversation.<br />Posez une question pour commencer.
+            {search.trim() ? 'Aucun résultat.' : <>Aucune conversation.<br />Posez une question pour commencer.</>}
           </p>
         ) : (
           groups.map(({ label, items }) => (

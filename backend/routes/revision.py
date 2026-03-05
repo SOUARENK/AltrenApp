@@ -147,6 +147,6 @@ async def generate_revision(body: RevisionRequest):
         raise HTTPException(status_code=500, detail="Réponse OpenAI invalide.") from exc
     except Exception as exc:
         logger.exception("Erreur génération révision : %s", exc)
-        raise HTTPException(status_code=500, detail="Erreur génération.") from exc
+        raise HTTPException(status_code=500, detail=f"Erreur génération : {type(exc).__name__} — {exc}") from exc
 
     return RevisionResponse(mode=body.mode, items=items)
