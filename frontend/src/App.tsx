@@ -7,6 +7,7 @@ import { Chat } from './pages/Chat';
 import { Agenda } from './pages/Agenda';
 import { Files } from './pages/Files';
 import { Revision } from './pages/Revision';
+import { RevisionSheet } from './pages/RevisionSheet';
 import { Settings } from './pages/Settings';
 import { MailPage } from './pages/Mail';
 
@@ -20,6 +21,7 @@ function AppRoutes() {
         <Route path="agenda" element={<Agenda />} />
         <Route path="files" element={<Files />} />
         <Route path="revision" element={<Revision />} />
+        <Route path="revision/sheet" element={<RevisionSheet />} />
         <Route path="settings" element={<Settings />} />
         <Route path="mail" element={<MailPage />} />
       </Route>

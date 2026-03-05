@@ -169,7 +169,7 @@ class DocumentSearchResponse(BaseModel):
 # ── Révision ─────────────────────────────────────────────────────────────────
 
 class RevisionRequest(BaseModel):
-    mode: str = Field(..., pattern="^(flashcard|quiz)$")
+    mode: str = Field(..., pattern="^(flashcard|quiz|summary)$")
     filename: str | None = None
     theme: str | None = None
     subfolder: str | None = None
@@ -180,3 +180,4 @@ class RevisionRequest(BaseModel):
 class RevisionResponse(BaseModel):
     mode: str
     items: list[dict]
+    html: str | None = None

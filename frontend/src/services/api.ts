@@ -276,12 +276,13 @@ export async function ingestFile(file: File, theme?: string, subfolder?: string)
 }
 
 export interface RevisionResult {
-  mode: 'flashcard' | 'quiz';
+  mode: 'flashcard' | 'quiz' | 'summary';
   items: any[];
+  html?: string;
 }
 
 export async function generateRevision(params: {
-  mode: 'flashcard' | 'quiz';
+  mode: 'flashcard' | 'quiz' | 'summary';
   filename?: string;
   theme?: string;
   subfolder?: string;

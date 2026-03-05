@@ -145,11 +145,15 @@ export function Files() {
     const label = mode === 'flashcard' ? 'Flashcards' : mode === 'quiz' ? 'QCM' : 'Fiche de révision';
     setUploadMsg(`⏳ Génération ${label} pour « ${file.name} »…`);
     try {
-      const apiMode: 'flashcard' | 'quiz' = mode === 'summary' ? 'flashcard' : mode;
       const count = mode === 'summary' ? 15 : 10;
-      const result = await generateRevision({ mode: apiMode, filename: file.name, difficulty: 'medium', count });
-      localStorage.setItem('revision_generated', JSON.stringify(result));
-      navigate('/revision');
+      const result = await generateRevision({ mode, filename: file.name, difficulty: 'medium', count });
+      if (mode === 'summary') {
+        localStorage.setItem('revision_sheet', result.html ?? '');
+        navigate('/revision/sheet');
+      } else {
+        localStorage.setItem('revision_generated', JSON.stringify(result));
+        navigate('/revision');
+      }
     } catch (e: any) {
       setError(e.message ?? 'Erreur de génération');
       setUploadMsg(null);
@@ -173,15 +177,19 @@ export function Files() {
     const label = mode === 'flashcard' ? 'Flashcards' : mode === 'quiz' ? 'QCM' : 'Fiche de révision';
     setUploadMsg(`⏳ Génération ${label} pour le dossier « ${folderLabel} »…`);
     try {
-      const apiMode: 'flashcard' | 'quiz' = mode === 'summary' ? 'flashcard' : mode;
       const count = mode === 'summary' ? 15 : 10;
       const result = await generateRevision({
-        mode: apiMode, theme,
+        mode, theme,
         subfolder: sub === '__other__' ? undefined : sub,
         difficulty: 'medium', count,
       });
-      localStorage.setItem('revision_generated', JSON.stringify(result));
-      navigate('/revision');
+      if (mode === 'summary') {
+        localStorage.setItem('revision_sheet', result.html ?? '');
+        navigate('/revision/sheet');
+      } else {
+        localStorage.setItem('revision_generated', JSON.stringify(result));
+        navigate('/revision');
+      }
     } catch (e: any) {
       setError(e.message ?? 'Erreur de génération');
       setUploadMsg(null);
