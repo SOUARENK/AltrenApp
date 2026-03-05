@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Search, Upload, FolderOpen, Plus, Trash2, MoveRight, X, RefreshCw, CheckSquare, Square, Brain, BookOpen, ExternalLink } from 'lucide-react';
+import { Search, Upload, FolderOpen, Plus, Trash2, MoveRight, X, RefreshCw, CheckSquare, Square, Brain, BookOpen, ExternalLink, MoreVertical, FileText } from 'lucide-react';
 import { getDocumentList, deleteDocument, moveDocument, ingestFile, searchDocuments, generateRevision } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 
@@ -141,11 +141,45 @@ export function Files() {
     await load();
   };
 
-  const handleGenerateRevision = async (file: IndexedFile, mode: 'flashcard' | 'quiz', difficulty: 'easy' | 'medium' | 'hard') => {
-    const diffLabel = difficulty === 'easy' ? 'Facile' : difficulty === 'medium' ? 'Moyen' : 'Difficile';
-    setUploadMsg(`⏳ Génération ${mode === 'flashcard' ? 'flashcards' : 'QCM'} (${diffLabel}) pour « ${file.name} »…`);
+  const handleGenerateRevision = async (file: IndexedFile, mode: 'flashcard' | 'quiz' | 'summary') => {
+    const label = mode === 'flashcard' ? 'Flashcards' : mode === 'quiz' ? 'QCM' : 'Fiche de révision';
+    setUploadMsg(`⏳ Génération ${label} pour « ${file.name} »…`);
     try {
-      const result = await generateRevision({ mode, filename: file.name, difficulty });
+      const apiMode: 'flashcard' | 'quiz' = mode === 'summary' ? 'flashcard' : mode;
+      const count = mode === 'summary' ? 20 : 10;
+      const result = await generateRevision({ mode: apiMode, filename: file.name, difficulty: 'medium', count });
+      localStorage.setItem('revision_generated', JSON.stringify(result));
+      navigate('/revision');
+    } catch (e: any) {
+      setError(e.message ?? 'Erreur de génération');
+      setUploadMsg(null);
+    }
+  };
+
+  const handleDeleteFolder = async (theme: string, sub: string) => {
+    const folderFiles = files.filter(f => f.theme === theme && f.subfolder === sub);
+    if (!confirm(`Supprimer le dossier « ${sub} » et ses ${folderFiles.length} fichier(s) de la base ?`)) return;
+    let ok = 0;
+    for (const f of folderFiles) {
+      try { await deleteDocument(f.name); ok++; } catch { }
+    }
+    setFiles(prev => prev.filter(f => !(f.theme === theme && f.subfolder === sub)));
+    setUploadMsg(`✅ Dossier « ${sub} » supprimé (${ok} fichier(s))`);
+    setTimeout(() => setUploadMsg(null), 4000);
+  };
+
+  const handleGenerateFolderRevision = async (theme: string, sub: string, mode: 'flashcard' | 'quiz' | 'summary') => {
+    const folderLabel = sub === '__other__' ? 'Non classé' : sub;
+    const label = mode === 'flashcard' ? 'Flashcards' : mode === 'quiz' ? 'QCM' : 'Fiche de révision';
+    setUploadMsg(`⏳ Génération ${label} pour le dossier « ${folderLabel} »…`);
+    try {
+      const apiMode: 'flashcard' | 'quiz' = mode === 'summary' ? 'flashcard' : mode;
+      const count = mode === 'summary' ? 20 : 10;
+      const result = await generateRevision({
+        mode: apiMode, theme,
+        subfolder: sub === '__other__' ? undefined : sub,
+        difficulty: 'medium', count,
+      });
       localStorage.setItem('revision_generated', JSON.stringify(result));
       navigate('/revision');
     } catch (e: any) {
@@ -453,21 +487,32 @@ export function Files() {
 
                         return (
                           <div key={sub} style={{ borderBottom: '1px solid var(--color-card2)' }}>
-                            <button
-                              onClick={() => toggleSub(subKey)}
-                              className="w-full flex items-center gap-3 px-5 py-3 hover:bg-white/3 transition-colors"
-                            >
-                              <span>{subFiles.length > 0 ? '📂' : '📁'}</span>
-                              <span className="flex-1 text-left text-sm text-slate-300 font-medium">{sub}</span>
-                              {subFiles.length > 0 ? (
-                                <>
-                                  <span className="text-xs text-slate-500 rounded-full px-2 py-0.5" style={{ backgroundColor: 'var(--color-input)' }}>{subFiles.length}</span>
-                                  <span className="text-xs text-slate-600 ml-1">{isSubExpanded ? '▾' : '▸'}</span>
-                                </>
-                              ) : (
-                                <span className="text-xs text-slate-700 italic">vide</span>
-                              )}
-                            </button>
+                            <div className="group/folder flex items-center hover:bg-white/3 transition-colors">
+                              <button
+                                onClick={() => toggleSub(subKey)}
+                                className="flex-1 flex items-center gap-3 px-5 py-3"
+                              >
+                                <span>{subFiles.length > 0 ? '📂' : '📁'}</span>
+                                <span className="flex-1 text-left text-sm text-slate-300 font-medium">{sub}</span>
+                                {subFiles.length > 0 ? (
+                                  <>
+                                    <span className="text-xs text-slate-500 rounded-full px-2 py-0.5" style={{ backgroundColor: 'var(--color-input)' }}>{subFiles.length}</span>
+                                    <span className="text-xs text-slate-600 ml-1">{isSubExpanded ? '▾' : '▸'}</span>
+                                  </>
+                                ) : (
+                                  <span className="text-xs text-slate-700 italic">vide</span>
+                                )}
+                              </button>
+                              <div className="pr-3 opacity-0 group-hover/folder:opacity-100 transition-opacity">
+                                <ContextMenu items={[
+                                  { icon: <Brain size={13} />, label: 'Flashcards', onClick: () => handleGenerateFolderRevision(theme.key, sub, 'flashcard') },
+                                  { icon: <BookOpen size={13} />, label: 'QCM', onClick: () => handleGenerateFolderRevision(theme.key, sub, 'quiz') },
+                                  { icon: <FileText size={13} />, label: 'Fiche de révision', onClick: () => handleGenerateFolderRevision(theme.key, sub, 'summary') },
+                                  { separator: true },
+                                  { icon: <Trash2 size={13} />, label: 'Supprimer le dossier', onClick: () => handleDeleteFolder(theme.key, sub), danger: true },
+                                ]} />
+                              </div>
+                            </div>
 
                             {isSubExpanded && subFiles.map(file => (
                               <FileRow
@@ -503,12 +548,21 @@ export function Files() {
                         const isSubExpanded = expandedSubs.has(subKey);
                         return (
                           <div style={{ borderBottom: '1px solid var(--color-card2)' }}>
-                            <button onClick={() => toggleSub(subKey)} className="w-full flex items-center gap-3 px-5 py-3 hover:bg-white/3 transition-colors">
-                              <span>📂</span>
-                              <span className="flex-1 text-left text-sm text-slate-500 italic">Non classé</span>
-                              <span className="text-xs text-slate-600 rounded-full px-2 py-0.5" style={{ backgroundColor: 'var(--color-input)' }}>{unclassified.length}</span>
-                              <span className="text-xs text-slate-600 ml-1">{isSubExpanded ? '▾' : '▸'}</span>
-                            </button>
+                            <div className="group/folder flex items-center hover:bg-white/3 transition-colors">
+                              <button onClick={() => toggleSub(subKey)} className="flex-1 flex items-center gap-3 px-5 py-3">
+                                <span>📂</span>
+                                <span className="flex-1 text-left text-sm text-slate-500 italic">Non classé</span>
+                                <span className="text-xs text-slate-600 rounded-full px-2 py-0.5" style={{ backgroundColor: 'var(--color-input)' }}>{unclassified.length}</span>
+                                <span className="text-xs text-slate-600 ml-1">{isSubExpanded ? '▾' : '▸'}</span>
+                              </button>
+                              <div className="pr-3 opacity-0 group-hover/folder:opacity-100 transition-opacity">
+                                <ContextMenu items={[
+                                  { icon: <Brain size={13} />, label: 'Flashcards', onClick: () => handleGenerateFolderRevision(theme.key, '__other__', 'flashcard') },
+                                  { icon: <BookOpen size={13} />, label: 'QCM', onClick: () => handleGenerateFolderRevision(theme.key, '__other__', 'quiz') },
+                                  { icon: <FileText size={13} />, label: 'Fiche de révision', onClick: () => handleGenerateFolderRevision(theme.key, '__other__', 'summary') },
+                                ]} />
+                              </div>
+                            </div>
                             {isSubExpanded && unclassified.map(file => (
                               <FileRow
                                 key={file.name}
@@ -684,6 +738,65 @@ function ImportModal({ dialog, getAllSubs, onChangeTheme, onChangeSubfolder, onC
   );
 }
 
+// ── ContextMenu ───────────────────────────────────────────────────────────────
+
+interface ContextMenuItem {
+  icon?: React.ReactNode;
+  label?: string;
+  onClick?: () => void;
+  danger?: boolean;
+  separator?: boolean;
+}
+
+function ContextMenu({ items }: { items: ContextMenuItem[] }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handle = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handle);
+    return () => document.removeEventListener('mousedown', handle);
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative" onClick={e => e.stopPropagation()}>
+      <button
+        onClick={e => { e.stopPropagation(); setOpen(o => !o); }}
+        className="w-7 h-7 flex items-center justify-center rounded-lg transition-colors hover:bg-white/5"
+        style={{ color: open ? 'var(--color-text)' : 'var(--color-muted)' }}
+        title="Actions"
+      >
+        <MoreVertical size={14} />
+      </button>
+      {open && (
+        <div
+          className="absolute right-0 top-8 z-30 rounded-xl overflow-hidden shadow-xl"
+          style={{ minWidth: '170px', backgroundColor: 'var(--color-card2)', border: '1px solid var(--color-input-border)' }}
+        >
+          {items.map((item, i) =>
+            item.separator ? (
+              <div key={i} style={{ height: '1px', backgroundColor: 'var(--color-border)', margin: '2px 0' }} />
+            ) : (
+              <button
+                key={i}
+                onClick={() => { item.onClick?.(); setOpen(false); }}
+                className="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs text-left transition-colors hover:bg-white/5"
+                style={{ color: item.danger ? 'var(--color-error-text)' : 'var(--color-text)' }}
+              >
+                {item.icon}
+                {item.label}
+              </button>
+            )
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Sous-composant FileRow ────────────────────────────────────────────────────
 
 interface FileRowProps {
@@ -700,22 +813,24 @@ interface FileRowProps {
   onChangeMoveTheme: (theme: ThemeKey) => void;
   onChangeMoveSubfolder: (sub: string) => void;
   getAllSubs: (theme: string) => string[];
-  onGenerateRevision: (file: IndexedFile, mode: 'flashcard' | 'quiz', difficulty: 'easy' | 'medium' | 'hard') => void;
+  onGenerateRevision: (file: IndexedFile, mode: 'flashcard' | 'quiz' | 'summary') => void;
 }
 
-const DIFFICULTIES: { key: 'easy' | 'medium' | 'hard'; label: string; color: string }[] = [
-  { key: 'easy',   label: 'Facile',   color: '#16a34a' },
-  { key: 'medium', label: 'Moyen',    color: '#d97706' },
-  { key: 'hard',   label: 'Difficile', color: '#dc2626' },
-];
 
 function FileRow({ file, busy, moveDialog, multiSelect, selected, onToggleSelect, onDelete, onOpenMove, onMove, onCancelMove, onChangeMoveTheme, onChangeMoveSubfolder, getAllSubs, onGenerateRevision }: FileRowProps) {
   const isMoving = moveDialog?.filename === file.name;
-  const [diffMenu, setDiffMenu] = useState<'flashcard' | 'quiz' | null>(null);
+
+  const menuItems: ContextMenuItem[] = [
+    { icon: <Brain size={13} />, label: 'Flashcards', onClick: () => onGenerateRevision(file, 'flashcard') },
+    { icon: <BookOpen size={13} />, label: 'QCM', onClick: () => onGenerateRevision(file, 'quiz') },
+    { icon: <FileText size={13} />, label: 'Fiche de révision', onClick: () => onGenerateRevision(file, 'summary') },
+    { separator: true },
+    { icon: <MoveRight size={13} />, label: 'Déplacer', onClick: () => onOpenMove(file) },
+    { icon: <Trash2 size={13} />, label: 'Supprimer', onClick: () => onDelete(file.name), danger: true },
+  ];
 
   return (
     <div className="group">
-      {/* Ligne fichier */}
       <div
         className="flex items-center gap-3 px-8 py-2.5 hover:bg-white/3 transition-colors"
         style={selected ? { backgroundColor: 'rgba(37,99,235,0.12)', cursor: 'pointer' } : multiSelect ? { cursor: 'pointer' } : undefined}
@@ -732,7 +847,7 @@ function FileRow({ file, busy, moveDialog, multiSelect, selected, onToggleSelect
           <p className="text-xs text-slate-600">{file.chunks} chunks indexés</p>
         </div>
         {!multiSelect && (
-          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="flex gap-1 items-center opacity-0 group-hover:opacity-100 transition-opacity">
             <a
               href={`${FILE_BASE_URL}/${encodeURIComponent(file.name)}`}
               target="_blank"
@@ -743,62 +858,7 @@ function FileRow({ file, busy, moveDialog, multiSelect, selected, onToggleSelect
             >
               <ExternalLink size={14} />
             </a>
-            <div className="relative">
-              <button
-                onClick={e => { e.stopPropagation(); setDiffMenu(diffMenu === 'flashcard' ? null : 'flashcard'); }}
-                title="Générer des flashcards"
-                className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-500 hover:text-blue-400 hover:bg-white/5 transition-colors"
-              >
-                <Brain size={14} />
-              </button>
-              {diffMenu === 'flashcard' && (
-                <div className="absolute right-0 top-8 z-20 rounded-xl overflow-hidden shadow-xl" style={{ backgroundColor: 'var(--color-card2)', border: '1px solid var(--color-input-border)', minWidth: '110px' }}>
-                  {DIFFICULTIES.map(d => (
-                    <button key={d.key} onClick={e => { e.stopPropagation(); setDiffMenu(null); onGenerateRevision(file, 'flashcard', d.key); }}
-                      className="w-full text-left px-3 py-2 text-xs hover:bg-white/5 transition-colors"
-                      style={{ color: d.color }}>
-                      {d.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-            <div className="relative">
-              <button
-                onClick={e => { e.stopPropagation(); setDiffMenu(diffMenu === 'quiz' ? null : 'quiz'); }}
-                title="Générer un QCM"
-                className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-500 hover:text-green-400 hover:bg-white/5 transition-colors"
-              >
-                <BookOpen size={14} />
-              </button>
-              {diffMenu === 'quiz' && (
-                <div className="absolute right-0 top-8 z-20 rounded-xl overflow-hidden shadow-xl" style={{ backgroundColor: 'var(--color-card2)', border: '1px solid var(--color-input-border)', minWidth: '110px' }}>
-                  {DIFFICULTIES.map(d => (
-                    <button key={d.key} onClick={e => { e.stopPropagation(); setDiffMenu(null); onGenerateRevision(file, 'quiz', d.key); }}
-                      className="w-full text-left px-3 py-2 text-xs hover:bg-white/5 transition-colors"
-                      style={{ color: d.color }}>
-                      {d.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-            <button
-              onClick={e => { e.stopPropagation(); onOpenMove(file); }}
-              disabled={busy}
-              title="Déplacer"
-              className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-500 hover:text-slate-200 hover:bg-white/5 transition-colors disabled:opacity-30"
-            >
-              <MoveRight size={14} />
-            </button>
-            <button
-              onClick={e => { e.stopPropagation(); onDelete(file.name); }}
-              disabled={busy}
-              title="Supprimer"
-              className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-500 hover:text-red-400 hover:bg-white/5 transition-colors disabled:opacity-30"
-            >
-              <Trash2 size={14} />
-            </button>
+            <ContextMenu items={menuItems} />
           </div>
         )}
       </div>
