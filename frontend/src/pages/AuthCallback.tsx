@@ -33,7 +33,7 @@ export function AuthCallback() {
   return (
     <div
       className="min-h-screen flex flex-col items-center justify-center gap-4"
-      style={{ backgroundColor: '#0d0d0d' }}
+      style={{ backgroundColor: 'var(--color-bg)' }}
     >
       <div className="flex gap-1.5">
         {[0, 1, 2].map(i => (

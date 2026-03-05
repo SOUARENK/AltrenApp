@@ -43,7 +43,7 @@ export function Login() {
   return (
     <div
       className="min-h-screen flex items-center justify-center p-4"
-      style={{ backgroundColor: '#0d0d0d' }}
+      style={{ backgroundColor: 'var(--color-bg)' }}
     >
       <div className="w-full max-w-sm">
         <div className="text-center mb-10">
@@ -60,7 +60,7 @@ export function Login() {
         {errorMsg && (
           <div
             className="rounded-xl px-4 py-3 text-sm mb-4 text-center"
-            style={{ backgroundColor: '#1a0a0a', border: '1px solid #7f1d1d', color: '#fca5a5' }}
+            style={{ backgroundColor: 'var(--color-error-bg)', border: '1px solid var(--color-error-border)', color: 'var(--color-error-text)' }}
           >
             {errorMsg}
           </div>
@@ -68,7 +68,7 @@ export function Login() {
 
         <div
           className="rounded-2xl p-6 space-y-3"
-          style={{ backgroundColor: '#141414', border: '1px solid #1f1f1f' }}
+          style={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)' }}
         >
           <OAuthButton
             onClick={() => redirectTo('microsoft', loginMicrosoft)}
@@ -84,9 +84,9 @@ export function Login() {
             onClick={() => redirectTo('google', loginGoogle)}
             loading={loadingProvider === 'google'}
             disabled={loadingProvider !== null}
-            bgColor="#1f1f1f"
-            textColor="#f1f5f9"
-            border="1px solid #2a2a2a"
+            bgColor="var(--color-input)"
+            textColor="var(--color-text)"
+            border="1px solid var(--color-input-border)"
             icon={<GoogleIcon />}
             label="Se connecter avec Google"
           />
@@ -95,7 +95,7 @@ export function Login() {
         <button
           onClick={() => { loginDev(); navigate('/', { replace: true }); }}
           className="flex items-center justify-center gap-2 w-full mt-3 py-2.5 text-xs font-medium rounded-lg transition-colors hover:opacity-80"
-          style={{ backgroundColor: '#1e2a1e', color: '#86efac', border: '1px solid #166534' }}
+          style={{ backgroundColor: 'var(--color-card2)', color: '#22c55e', border: '1px solid #166534' }}
         >
           <FlaskConical size={13} />
           Accès dev (sans backend)

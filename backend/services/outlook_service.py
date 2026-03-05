@@ -15,8 +15,9 @@ from services.rag_engine import chunk_pages, delete_by_filename, generate_embedd
 logger = logging.getLogger(__name__)
 
 GRAPH_BASE = "https://graph.microsoft.com/v1.0"
-SCOPES = ["Mail.Read", "Calendars.Read", "User.Read", "offline_access"]
-OUTLOOK_MAIL_FILENAME = "outlook_mails"
+SCOPES = ["Mail.Read", "Calendars.Read", "User.Read"]
+OUTLOOK_MAIL_FILENAME = "outlook_mails_recus"
+OUTLOOK_SENT_FILENAME = "outlook_mails_envoyes"
 OUTLOOK_CAL_FILENAME = "outlook_calendrier"
 
 
@@ -46,7 +47,11 @@ def _get_supabase():
 def get_auth_url() -> str:
     app = _get_msal_app()
     redirect_uri = os.getenv("AZURE_REDIRECT_URI", "http://localhost:8000/auth/callback/microsoft")
-    return app.get_authorization_request_url(scopes=SCOPES, redirect_uri=redirect_uri)
+    return app.get_authorization_request_url(
+        scopes=SCOPES,
+        redirect_uri=redirect_uri,
+        prompt="select_account",
+    )
 
 
 def exchange_code_for_tokens(code: str) -> dict:
@@ -106,7 +111,11 @@ def get_outlook_status() -> dict:
         if not result.data:
             return {"connected": False}
         row = result.data[0]
-        return {"connected": True, "email": row.get("email"), "last_sync": row.get("updated_at")}
+        email = row.get("email", "")
+        if "alternapp.local" in email or email.startswith("dev"):
+            client.table("oauth_tokens").delete().eq("provider", "microsoft").execute()
+            return {"connected": False}
+        return {"connected": True, "email": email, "last_sync": row.get("updated_at")}
     except Exception:
         return {"connected": False}
 
@@ -122,15 +131,24 @@ def disconnect_outlook() -> None:
 def fetch_recent_emails(token: str, count: int = 50) -> list[dict]:
     headers = {"Authorization": f"Bearer {token}"}
     params = {"$top": count, "$orderby": "receivedDateTime desc",
-               "$select": "subject,from,receivedDateTime,bodyPreview,body"}
-    r = httpx.get(f"{GRAPH_BASE}/me/messages", headers=headers, params=params, timeout=30)
+               "$select": "id,subject,from,receivedDateTime,bodyPreview,body,isRead,hasAttachments,importance"}
+    r = httpx.get(f"{GRAPH_BASE}/me/mailFolders/Inbox/messages", headers=headers, params=params, timeout=30)
+    r.raise_for_status()
+    return r.json().get("value", [])
+
+
+def fetch_sent_emails(token: str, count: int = 50) -> list[dict]:
+    headers = {"Authorization": f"Bearer {token}"}
+    params = {"$top": count, "$orderby": "sentDateTime desc",
+               "$select": "subject,toRecipients,sentDateTime,bodyPreview,body"}
+    r = httpx.get(f"{GRAPH_BASE}/me/mailFolders/SentItems/messages", headers=headers, params=params, timeout=30)
     r.raise_for_status()
     return r.json().get("value", [])
 
 
 def fetch_calendar_events(token: str, days: int = 30) -> list[dict]:
-    headers = {"Authorization": f"Bearer {token}", "Prefer": 'outlook.timezone="Europe/Paris"'}
-    start = datetime.now(timezone.utc).isoformat()
+    headers = {"Authorization": f"Bearer {token}"}
+    start = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
     end = (datetime.now(timezone.utc) + timedelta(days=days)).isoformat()
     params = {
         "startDateTime": start, "endDateTime": end, "$top": 100,
@@ -157,13 +175,22 @@ def fetch_user_info(token: str) -> dict:
 
 # ── Texte indexable ──────────────────────────────────────────────────────────
 
-def email_to_text(email: dict) -> str:
+def email_to_text(email: dict, sent: bool = False) -> str:
     subject = email.get("subject", "(sans objet)")
+    if sent:
+        recipients = email.get("toRecipients", [])
+        to_str = ", ".join(
+            f"{r.get('emailAddress', {}).get('name', '')} <{r.get('emailAddress', {}).get('address', '')}>".strip(" <>")
+            for r in recipients
+        )
+        date = email.get("sentDateTime", "")[:10]
+        body = email.get("bodyPreview", "") or ""
+        return f"Mail envoyé | À : {to_str} | Date : {date} | Sujet : {subject}\n{body}"
     sender = email.get("from", {}).get("emailAddress", {})
     from_str = f"{sender.get('name', '')} <{sender.get('address', '')}>".strip(" <>")
     date = email.get("receivedDateTime", "")[:10]
     body = email.get("bodyPreview", "") or ""
-    return f"Mail | De : {from_str} | Date : {date} | Sujet : {subject}\n{body}"
+    return f"Mail reçu | De : {from_str} | Date : {date} | Sujet : {subject}\n{body}"
 
 
 def event_to_text(event: dict) -> str:
@@ -187,27 +214,36 @@ def event_to_text(event: dict) -> str:
 
 def sync_outlook_data() -> dict:
     token = get_valid_token()
-    emails = fetch_recent_emails(token, count=50)
-    events = fetch_calendar_events(token, days=30)
-    logger.info("Outlook : %d mails et %d événements.", len(emails), len(events))
+    received = fetch_recent_emails(token, count=50)
+    sent = fetch_sent_emails(token, count=50)
+    events = fetch_calendar_events(token, days=60)
+    logger.info("Outlook : %d reçus, %d envoyés, %d événements.", len(received), len(sent), len(events))
 
     delete_by_filename(OUTLOOK_MAIL_FILENAME)
+    delete_by_filename(OUTLOOK_SENT_FILENAME)
     delete_by_filename(OUTLOOK_CAL_FILENAME)
     total_chunks = 0
 
-    if emails:
-        mail_pages = [{"page": i + 1, "text": email_to_text(e)} for i, e in enumerate(emails)]
-        mail_chunks = chunk_pages(mail_pages, filename=OUTLOOK_MAIL_FILENAME)
-        for chunk in mail_chunks:
-            chunk["metadata"]["theme"] = "outlook_mail"
-        total_chunks += insert_chunks(mail_chunks, generate_embeddings([c["content"] for c in mail_chunks]))
+    if received:
+        pages = [{"page": i + 1, "text": email_to_text(e, sent=False)} for i, e in enumerate(received)]
+        chunks = chunk_pages(pages, filename=OUTLOOK_MAIL_FILENAME)
+        for c in chunks:
+            c["metadata"]["theme"] = "outlook_mail"
+        total_chunks += insert_chunks(chunks, generate_embeddings([c["content"] for c in chunks]))
+
+    if sent:
+        pages = [{"page": i + 1, "text": email_to_text(e, sent=True)} for i, e in enumerate(sent)]
+        chunks = chunk_pages(pages, filename=OUTLOOK_SENT_FILENAME)
+        for c in chunks:
+            c["metadata"]["theme"] = "outlook_mail_envoye"
+        total_chunks += insert_chunks(chunks, generate_embeddings([c["content"] for c in chunks]))
 
     if events:
-        event_pages = [{"page": i + 1, "text": event_to_text(e)} for i, e in enumerate(events)]
-        event_chunks = chunk_pages(event_pages, filename=OUTLOOK_CAL_FILENAME)
-        for chunk in event_chunks:
-            chunk["metadata"]["theme"] = "outlook_calendrier"
-        total_chunks += insert_chunks(event_chunks, generate_embeddings([c["content"] for c in event_chunks]))
+        pages = [{"page": i + 1, "text": event_to_text(e)} for i, e in enumerate(events)]
+        chunks = chunk_pages(pages, filename=OUTLOOK_CAL_FILENAME)
+        for c in chunks:
+            c["metadata"]["theme"] = "outlook_calendrier"
+        total_chunks += insert_chunks(chunks, generate_embeddings([c["content"] for c in chunks]))
 
     logger.info("Sync Outlook terminée : %d chunks.", total_chunks)
-    return {"mail_count": len(emails), "event_count": len(events), "chunks_inserted": total_chunks}
+    return {"mail_count": len(received) + len(sent), "event_count": len(events), "chunks_inserted": total_chunks}

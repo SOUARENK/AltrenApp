@@ -25,7 +25,7 @@ export function Agenda() {
   }, [fetchEvents]);
 
   return (
-    <div className="p-6" style={{ backgroundColor: '#0d0d0d', minHeight: '100%' }}>
+    <div className="p-6" style={{ backgroundColor: 'var(--color-bg)', minHeight: '100%' }}>
       <div className="flex items-center gap-4 mb-6">
         <h1 className="text-xl font-semibold text-white">Agenda</h1>
         <div className="flex items-center gap-3 ml-4 text-xs">
@@ -62,7 +62,7 @@ export function Agenda() {
       ) : (
         <div
           className="rounded-xl p-4"
-          style={{ backgroundColor: '#141414', border: '1px solid #1f1f1f' }}
+          style={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)' }}
         >
           <CalendarView events={events} onRangeChange={fetchEvents} />
         </div>

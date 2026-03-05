@@ -8,8 +8,8 @@ interface ErrorMessageProps {
 export function ErrorMessage({ message, onDismiss }: ErrorMessageProps) {
   return (
     <div
-      className="flex items-start gap-3 rounded-lg p-3 text-sm"
-      style={{ backgroundColor: '#1a0a0a', border: '1px solid #7f1d1d', color: '#fca5a5' }}
+      className="flex items-start gap-3 rounded-lg p-3 text-sm error-message"
+      style={{ backgroundColor: 'var(--color-error-bg)', border: '1px solid var(--color-error-border)', color: 'var(--color-error-text)' }}
     >
       <AlertCircle size={16} className="mt-0.5 shrink-0" />
       <span className="flex-1">{message}</span>

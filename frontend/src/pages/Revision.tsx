@@ -70,7 +70,7 @@ export function Revision() {
 
   if (mode === 'flashcards') {
     return (
-      <div className="p-6" style={{ backgroundColor: '#0d0d0d', minHeight: '100%' }}>
+      <div className="p-6" style={{ backgroundColor: 'var(--color-bg)', minHeight: '100%' }}>
         <div className="flex items-center gap-4 mb-8">
           <button onClick={() => setMode('home')} className="text-slate-500 hover:text-white transition-colors text-sm">
             ← Retour
@@ -95,7 +95,7 @@ export function Revision() {
 
   if (mode === 'quiz') {
     return (
-      <div className="p-6" style={{ backgroundColor: '#0d0d0d', minHeight: '100%' }}>
+      <div className="p-6" style={{ backgroundColor: 'var(--color-bg)', minHeight: '100%' }}>
         <div className="flex items-center gap-4 mb-8">
           <button onClick={() => setMode('home')} className="text-slate-500 hover:text-white transition-colors text-sm">
             ← Retour
@@ -112,12 +112,12 @@ export function Revision() {
   }
 
   return (
-    <div className="p-6" style={{ backgroundColor: '#0d0d0d', minHeight: '100%' }}>
+    <div className="p-6" style={{ backgroundColor: 'var(--color-bg)', minHeight: '100%' }}>
       <h1 className="text-xl font-semibold text-white mb-6">Mode Révision</h1>
 
       {error && <ErrorMessage message={error} onDismiss={() => setError(null)} />}
       {uploadMsg && (
-        <div className="rounded-lg px-4 py-3 text-sm mb-4" style={{ backgroundColor: '#052e16', color: '#86efac', border: '1px solid #166534' }}>
+        <div className="rounded-lg px-4 py-3 text-sm mb-4" style={{ backgroundColor: 'var(--color-card2)', color: '#22c55e', border: '1px solid #166534' }}>
           {uploadMsg}
         </div>
       )}
@@ -126,7 +126,7 @@ export function Revision() {
         <button
           onClick={() => navigate('/files')}
           className="rounded-xl p-5 text-left transition-all hover:scale-[1.02] active:scale-[0.98]"
-          style={{ backgroundColor: '#141414', border: '2px dashed #2563eb' }}
+          style={{ backgroundColor: 'var(--color-card)', border: '2px dashed #2563eb' }}
         >
           <Files size={24} className="mb-3" style={{ color: '#2563eb' }} />
           <h3 className="text-sm font-semibold text-slate-200">Générer depuis un fichier</h3>
@@ -137,7 +137,7 @@ export function Revision() {
           onClick={() => fileRef.current?.click()}
           disabled={isUploading}
           className="rounded-xl p-5 text-left transition-all hover:scale-[1.02] active:scale-[0.98]"
-          style={{ backgroundColor: '#141414', border: '1px dashed #2a2a2a' }}
+          style={{ backgroundColor: 'var(--color-card)', border: '1px dashed var(--color-input-border)' }}
         >
           <Upload size={24} className="mb-3" style={{ color: '#d97706' }} />
           <h3 className="text-sm font-semibold text-slate-200">
@@ -148,7 +148,7 @@ export function Revision() {
         </button>
       </div>
 
-      <div className="rounded-xl p-4" style={{ backgroundColor: '#141414', border: '1px solid #1f1f1f' }}>
+      <div className="rounded-xl p-4" style={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)' }}>
         <h3 className="text-sm font-semibold text-slate-300 mb-3 flex items-center gap-2">
           <FileText size={16} style={{ color: '#2563eb' }} />
           Comment générer des fiches ?

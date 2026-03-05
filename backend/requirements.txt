@@ -38,3 +38,6 @@ PyJWT>=2.8.0
 
 # Chiffrement tokens OAuth
 cryptography>=42.0.0
+
+# Données fuseaux horaires IANA (requis sur Windows pour zoneinfo)
+tzdata>=2024.1

@@ -37,11 +37,9 @@ def _google_configured() -> bool:
 async def login_microsoft():
     """Retourne l'URL de connexion Microsoft OAuth."""
     if not _azure_configured():
-        # Mode dev : retourner une URL fictive
-        frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
-        return AuthUrlResponse(
-            auth_url=f"{frontend_url}?token=dev-token-microsoft&provider=microsoft",
-            state="dev-state",
+        raise HTTPException(
+            status_code=503,
+            detail="Azure non configuré. Renseignez AZURE_CLIENT_ID et AZURE_CLIENT_SECRET dans backend/.env.",
         )
     try:
         from services.outlook_service import get_auth_url
@@ -147,7 +145,18 @@ async def get_me(request: Request):
 
     if not token or token.startswith("dev-") or token == "mock-jwt-token-dev":
         return DEV_USER
-    return DEV_USER
+
+    try:
+        from services.outlook_service import fetch_user_info, get_valid_token
+        ms_token = get_valid_token()
+        user_info = fetch_user_info(ms_token)
+        return UserResponse(
+            id=user_info.get("id", str(uuid.uuid4())),
+            name=user_info.get("name", "Utilisateur"),
+            email=user_info.get("email", ""),
+        )
+    except Exception:
+        return DEV_USER
 
 
 @router.post("/auth/logout")

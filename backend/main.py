@@ -38,7 +38,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from routes import auth, chat, documents, agenda, dashboard, outlook, revision, connect
+from routes import auth, chat, documents, agenda, dashboard, outlook, revision, connect, mail
 
 logging.basicConfig(
     level=logging.INFO,
@@ -58,10 +58,18 @@ app = FastAPI(
 
 # ── CORS ─────────────────────────────────────────────────────────────────────
 
+_cors_origins_env = os.getenv("CORS_ALLOWED_ORIGINS", "")
+_cors_origins = (
+    [o.strip() for o in _cors_origins_env.split(",") if o.strip()]
+    if _cors_origins_env
+    else ["http://localhost:5173", "http://localhost:5174", "http://localhost:3000"]
+)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
+    allow_origins=_cors_origins,
+    allow_origin_regex=r"https://.*\.vercel\.app",
+    allow_credentials=True,
     allow_methods=["GET", "POST", "DELETE", "PATCH", "PUT", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization", "Accept"],
 )
@@ -76,6 +84,7 @@ app.include_router(dashboard.router)
 app.include_router(outlook.router)
 app.include_router(revision.router)
 app.include_router(connect.router)
+app.include_router(mail.router)
 
 # ── Fichiers uploadés ────────────────────────────────────────────────────────
 

@@ -6,6 +6,7 @@ Retourne les événements depuis Outlook (si connecté) ou une liste vide.
 import logging
 import uuid
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, HTTPException
 
@@ -38,6 +39,18 @@ def _ics_event_to_agenda(ev: dict) -> AgendaEvent:
         location=ev.get("location"),
         description=ev.get("description"),
     )
+
+
+PARIS_TZ = ZoneInfo("Europe/Paris")
+
+
+def _paris_date(dt_str: str) -> str:
+    """Converts a UTC ISO datetime string to the Paris local date (YYYY-MM-DD)."""
+    try:
+        dt = datetime.fromisoformat(dt_str.replace("Z", "+00:00"))
+        return dt.astimezone(PARIS_TZ).date().isoformat()
+    except Exception:
+        return dt_str[:10]
 
 
 def _filter_by_range(events: list[AgendaEvent], start: str | None, end: str | None) -> list[AgendaEvent]:
@@ -98,7 +111,7 @@ async def get_agenda_today():
     Retourne les événements d'aujourd'hui + les tâches urgentes.
     Sources : Outlook + ICS.
     """
-    today = datetime.now(timezone.utc).date()
+    today = datetime.now(ZoneInfo("Europe/Paris")).date()
     today_str = today.isoformat()
     events: list[AgendaEvent] = []
 
@@ -108,7 +121,8 @@ async def get_agenda_today():
         token = get_valid_token()
         raw_events = fetch_calendar_events(token, days=1)
         for i, e in enumerate(raw_events):
-            if e.get("start", {}).get("dateTime", "")[:10] == today_str:
+            dt_str = e.get("start", {}).get("dateTime", "")
+            if _paris_date(dt_str) == today_str:
                 events.append(_outlook_event_to_agenda(e, i))
     except ValueError:
         pass

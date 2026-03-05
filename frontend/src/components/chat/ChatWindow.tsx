@@ -21,7 +21,7 @@ export function ChatWindow({ messages, isLoading }: ChatWindowProps) {
         <div className="flex flex-col items-center justify-center h-full text-center gap-3">
           <div
             className="w-12 h-12 rounded-full flex items-center justify-center text-xl"
-            style={{ backgroundColor: '#1f1f1f' }}
+            style={{ backgroundColor: 'var(--color-input)' }}
           >
             🤖
           </div>
@@ -33,7 +33,7 @@ export function ChatWindow({ messages, isLoading }: ChatWindowProps) {
       ))}
       {isLoading && (
         <div className="flex justify-start mb-4">
-          <div className="rounded-2xl" style={{ backgroundColor: '#1f1f1f' }}>
+          <div className="rounded-2xl" style={{ backgroundColor: 'var(--color-input)' }}>
             <LoadingDots />
           </div>
         </div>

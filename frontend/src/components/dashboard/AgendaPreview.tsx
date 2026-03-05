@@ -28,7 +28,7 @@ export function AgendaPreview({ events, isLoading }: AgendaPreviewProps) {
   return (
     <div
       className="rounded-xl p-4"
-      style={{ backgroundColor: '#141414', border: '1px solid #1f1f1f' }}
+      style={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)' }}
     >
       <h3 className="text-sm font-semibold text-slate-300 mb-3 flex items-center gap-2">
         <Calendar size={16} style={{ color: '#2563eb' }} />

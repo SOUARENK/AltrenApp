@@ -229,14 +229,14 @@ export function Files() {
   // ── Rendu ────────────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex h-full" style={{ backgroundColor: '#0d0d0d' }}>
+    <div className="flex h-full" style={{ backgroundColor: 'var(--color-bg)' }}>
 
       {/* ── Panneau gauche (recherche + upload) ─────────────────────────── */}
       <div
         className="flex flex-col shrink-0"
-        style={{ width: '260px', borderRight: '1px solid #1f1f1f', backgroundColor: '#0d0d0d' }}
+        style={{ width: '260px', borderRight: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg)' }}
       >
-        <div className="p-4" style={{ borderBottom: '1px solid #1f1f1f' }}>
+        <div className="p-4" style={{ borderBottom: '1px solid var(--color-border)' }}>
           <h1 className="text-base font-semibold text-white mb-3">Base de documents</h1>
 
           {/* Recherche sémantique */}
@@ -249,7 +249,7 @@ export function Files() {
               placeholder="Recherche sémantique…"
               disabled={searching}
               className="w-full rounded-lg pl-8 pr-3 py-2 text-xs outline-none text-slate-300 placeholder:text-slate-600 disabled:opacity-50"
-              style={{ backgroundColor: '#1f1f1f', border: '1px solid #2a2a2a' }}
+              style={{ backgroundColor: 'var(--color-input)', border: '1px solid var(--color-input-border)' }}
             />
           </form>
 
@@ -287,7 +287,7 @@ export function Files() {
             ) : (
               <div className="space-y-1">
                 {searchResults.map((r, i) => (
-                  <div key={i} className="rounded-lg px-2 py-2" style={{ backgroundColor: '#141414' }}>
+                  <div key={i} className="rounded-lg px-2 py-2" style={{ backgroundColor: 'var(--color-card)' }}>
                     <p className="text-xs font-medium text-slate-300 truncate">📄 {r.filename}</p>
                     <p className="text-xs text-slate-600 mt-0.5 line-clamp-2">{r.excerpt}</p>
                     <p className="text-xs mt-1" style={{ color: '#2563eb' }}>Similarité {Math.round(r.similarity * 100)}%</p>
@@ -312,12 +312,12 @@ export function Files() {
 
       {/* Notifications */}
         {uploadMsg && (
-          <div className="mx-3 my-2 rounded-lg px-3 py-2 text-xs" style={{ backgroundColor: '#052e16', color: '#86efac' }}>
+          <div className="mx-3 my-2 rounded-lg px-3 py-2 text-xs" style={{ backgroundColor: 'var(--color-card2)', color: '#22c55e' }}>
             {uploadMsg}
           </div>
         )}
         {error && (
-          <div className="mx-3 my-2 rounded-lg px-3 py-2 text-xs flex items-center justify-between" style={{ backgroundColor: '#450a0a', color: '#fca5a5' }}>
+          <div className="mx-3 my-2 rounded-lg px-3 py-2 text-xs flex items-center justify-between" style={{ backgroundColor: 'var(--color-error-bg)', color: 'var(--color-error-text)' }}>
             <span className="flex-1">{error}</span>
             <button onClick={() => setError(null)}><X size={12} /></button>
           </div>
@@ -338,8 +338,8 @@ export function Files() {
             onClick={() => multiSelect ? exitMultiSelect() : setMultiSelect(true)}
             className="flex items-center gap-1.5 text-xs rounded-lg px-3 py-1.5 font-medium transition-all"
             style={multiSelect
-              ? { backgroundColor: '#1f2d4e', color: '#60a5fa', border: '1px solid #2563eb' }
-              : { backgroundColor: '#1f1f1f', color: '#64748b', border: '1px solid #2a2a2a' }}
+              ? { backgroundColor: 'color-mix(in srgb, #2563eb 15%, var(--color-card))', color: '#60a5fa', border: '1px solid #2563eb' }
+              : { backgroundColor: 'var(--color-input)', color: '#64748b', border: '1px solid var(--color-input-border)' }}
           >
             {multiSelect ? <CheckSquare size={13} /> : <Square size={13} />}
             {multiSelect ? 'Désélectionner' : 'Sélectionner plusieurs'}
@@ -383,7 +383,7 @@ export function Files() {
         {loading ? (
           <div className="space-y-3">
             {[1, 2, 3].map(i => (
-              <div key={i} className="h-16 rounded-2xl animate-pulse" style={{ backgroundColor: '#141414' }} />
+              <div key={i} className="h-16 rounded-2xl animate-pulse" style={{ backgroundColor: 'var(--color-card)' }} />
             ))}
           </div>
         ) : files.length === 0 && searchResults === null ? (
@@ -403,7 +403,7 @@ export function Files() {
                 <div
                   key={theme.key}
                   className="rounded-2xl overflow-hidden border-l-4"
-                  style={{ backgroundColor: '#141414', border: '1px solid #1f1f1f', borderLeftColor: theme.color, borderLeftWidth: '4px' }}
+                  style={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)', borderLeftColor: theme.color, borderLeftWidth: '4px' }}
                 >
                   {/* En-tête thème */}
                   <div className="flex items-center gap-3 px-5 py-4">
@@ -436,23 +436,23 @@ export function Files() {
                         onKeyDown={e => { if (e.key === 'Enter') confirmAddSub(); if (e.key === 'Escape') setAddingSubFor(null); }}
                         placeholder="Nom du sous-dossier…"
                         className="flex-1 rounded-lg px-3 py-2 text-sm text-slate-200 outline-none"
-                        style={{ backgroundColor: '#1f1f1f', border: '1px solid #2a2a2a' }}
+                        style={{ backgroundColor: 'var(--color-input)', border: '1px solid var(--color-input-border)' }}
                       />
                       <button onClick={confirmAddSub} className="px-3 rounded-lg text-sm text-white transition-colors" style={{ backgroundColor: '#2563eb' }}>✓</button>
-                      <button onClick={() => setAddingSubFor(null)} className="px-3 rounded-lg text-sm text-slate-300 transition-colors" style={{ backgroundColor: '#1f1f1f' }}>✕</button>
+                      <button onClick={() => setAddingSubFor(null)} className="px-3 rounded-lg text-sm text-slate-300 transition-colors" style={{ backgroundColor: 'var(--color-input)' }}>✕</button>
                     </div>
                   )}
 
                   {/* Sous-dossiers */}
                   {isExpanded && (
-                    <div style={{ borderTop: '1px solid #1f1f1f' }}>
+                    <div style={{ borderTop: '1px solid var(--color-border)' }}>
                       {allSubs.map(sub => {
                         const subFiles = themeFiles.filter(f => f.subfolder === sub);
                         const subKey = `${theme.key}/${sub}`;
                         const isSubExpanded = expandedSubs.has(subKey);
 
                         return (
-                          <div key={sub} style={{ borderBottom: '1px solid #1a1a1a' }}>
+                          <div key={sub} style={{ borderBottom: '1px solid var(--color-card2)' }}>
                             <button
                               onClick={() => toggleSub(subKey)}
                               className="w-full flex items-center gap-3 px-5 py-3 hover:bg-white/3 transition-colors"
@@ -461,7 +461,7 @@ export function Files() {
                               <span className="flex-1 text-left text-sm text-slate-300 font-medium">{sub}</span>
                               {subFiles.length > 0 ? (
                                 <>
-                                  <span className="text-xs text-slate-500 rounded-full px-2 py-0.5" style={{ backgroundColor: '#1f1f1f' }}>{subFiles.length}</span>
+                                  <span className="text-xs text-slate-500 rounded-full px-2 py-0.5" style={{ backgroundColor: 'var(--color-input)' }}>{subFiles.length}</span>
                                   <span className="text-xs text-slate-600 ml-1">{isSubExpanded ? '▾' : '▸'}</span>
                                 </>
                               ) : (
@@ -502,11 +502,11 @@ export function Files() {
                         const subKey = `${theme.key}/__other__`;
                         const isSubExpanded = expandedSubs.has(subKey);
                         return (
-                          <div style={{ borderBottom: '1px solid #1a1a1a' }}>
+                          <div style={{ borderBottom: '1px solid var(--color-card2)' }}>
                             <button onClick={() => toggleSub(subKey)} className="w-full flex items-center gap-3 px-5 py-3 hover:bg-white/3 transition-colors">
                               <span>📂</span>
                               <span className="flex-1 text-left text-sm text-slate-500 italic">Non classé</span>
-                              <span className="text-xs text-slate-600 rounded-full px-2 py-0.5" style={{ backgroundColor: '#1f1f1f' }}>{unclassified.length}</span>
+                              <span className="text-xs text-slate-600 rounded-full px-2 py-0.5" style={{ backgroundColor: 'var(--color-input)' }}>{unclassified.length}</span>
                               <span className="text-xs text-slate-600 ml-1">{isSubExpanded ? '▾' : '▸'}</span>
                             </button>
                             {isSubExpanded && unclassified.map(file => (
@@ -569,7 +569,7 @@ function ImportModal({ dialog, getAllSubs, onChangeTheme, onChangeSubfolder, onC
     >
       <div
         className="w-full max-w-md rounded-2xl p-6 space-y-5 shadow-2xl"
-        style={{ backgroundColor: '#141414', border: '1px solid #2a2a2a' }}
+        style={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-input-border)' }}
       >
         {/* En-tête */}
         <div className="flex items-center justify-between">
@@ -589,7 +589,7 @@ function ImportModal({ dialog, getAllSubs, onChangeTheme, onChangeSubfolder, onC
         {/* Liste des fichiers */}
         <div
           className="rounded-xl px-3 py-2 max-h-36 overflow-y-auto space-y-1"
-          style={{ backgroundColor: '#0d0d0d', border: '1px solid #1f1f1f' }}
+          style={{ backgroundColor: 'var(--color-bg)', border: '1px solid var(--color-border)' }}
         >
           {dialog.files.map(f => (
             <div key={f.name} className="flex items-center gap-2 text-xs text-slate-400">
@@ -611,8 +611,8 @@ function ImportModal({ dialog, getAllSubs, onChangeTheme, onChangeSubfolder, onC
                 disabled={dialog.uploading}
                 className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium transition-all text-left disabled:opacity-50"
                 style={{
-                  backgroundColor: dialog.theme === t.key ? '#1f2d4e' : '#1f1f1f',
-                  border: `2px solid ${dialog.theme === t.key ? t.color : '#2a2a2a'}`,
+                  backgroundColor: dialog.theme === t.key ? 'color-mix(in srgb, #2563eb 15%, var(--color-card))' : 'var(--color-input)',
+                  border: `2px solid ${dialog.theme === t.key ? t.color : 'var(--color-input-border)'}`,
                   color: dialog.theme === t.key ? 'white' : '#64748b',
                 }}
               >
@@ -633,9 +633,9 @@ function ImportModal({ dialog, getAllSubs, onChangeTheme, onChangeSubfolder, onC
                 disabled={dialog.uploading}
                 className="rounded-lg px-3 py-1.5 text-xs font-medium transition-all disabled:opacity-50"
                 style={{
-                  backgroundColor: dialog.subfolder === s ? theme.color : '#1f1f1f',
+                  backgroundColor: dialog.subfolder === s ? theme.color : 'var(--color-input)',
                   color: dialog.subfolder === s ? 'white' : '#64748b',
-                  border: `1px solid ${dialog.subfolder === s ? theme.color : '#2a2a2a'}`,
+                  border: `1px solid ${dialog.subfolder === s ? theme.color : 'var(--color-input-border)'}`,
                 }}
               >
                 {s}
@@ -651,7 +651,7 @@ function ImportModal({ dialog, getAllSubs, onChangeTheme, onChangeSubfolder, onC
               <span>Indexation en cours…</span>
               <span>{dialog.progress}%</span>
             </div>
-            <div className="w-full h-1.5 rounded-full" style={{ backgroundColor: '#1f1f1f' }}>
+            <div className="w-full h-1.5 rounded-full" style={{ backgroundColor: 'var(--color-input)' }}>
               <div
                 className="h-1.5 rounded-full transition-all duration-300"
                 style={{ width: `${dialog.progress}%`, backgroundColor: theme.color }}
@@ -666,7 +666,7 @@ function ImportModal({ dialog, getAllSubs, onChangeTheme, onChangeSubfolder, onC
             <button
               onClick={onCancel}
               className="flex-1 rounded-xl py-2.5 text-sm text-slate-300 transition-colors"
-              style={{ backgroundColor: '#1f1f1f', border: '1px solid #2a2a2a' }}
+              style={{ backgroundColor: 'var(--color-input)', border: '1px solid var(--color-input-border)' }}
             >
               Annuler
             </button>
@@ -752,7 +752,7 @@ function FileRow({ file, busy, moveDialog, multiSelect, selected, onToggleSelect
                 <Brain size={14} />
               </button>
               {diffMenu === 'flashcard' && (
-                <div className="absolute right-0 top-8 z-20 rounded-xl overflow-hidden shadow-xl" style={{ backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a', minWidth: '110px' }}>
+                <div className="absolute right-0 top-8 z-20 rounded-xl overflow-hidden shadow-xl" style={{ backgroundColor: 'var(--color-card2)', border: '1px solid var(--color-input-border)', minWidth: '110px' }}>
                   {DIFFICULTIES.map(d => (
                     <button key={d.key} onClick={e => { e.stopPropagation(); setDiffMenu(null); onGenerateRevision(file, 'flashcard', d.key); }}
                       className="w-full text-left px-3 py-2 text-xs hover:bg-white/5 transition-colors"
@@ -772,7 +772,7 @@ function FileRow({ file, busy, moveDialog, multiSelect, selected, onToggleSelect
                 <BookOpen size={14} />
               </button>
               {diffMenu === 'quiz' && (
-                <div className="absolute right-0 top-8 z-20 rounded-xl overflow-hidden shadow-xl" style={{ backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a', minWidth: '110px' }}>
+                <div className="absolute right-0 top-8 z-20 rounded-xl overflow-hidden shadow-xl" style={{ backgroundColor: 'var(--color-card2)', border: '1px solid var(--color-input-border)', minWidth: '110px' }}>
                   {DIFFICULTIES.map(d => (
                     <button key={d.key} onClick={e => { e.stopPropagation(); setDiffMenu(null); onGenerateRevision(file, 'quiz', d.key); }}
                       className="w-full text-left px-3 py-2 text-xs hover:bg-white/5 transition-colors"
@@ -805,13 +805,13 @@ function FileRow({ file, busy, moveDialog, multiSelect, selected, onToggleSelect
 
       {/* Dialog déplacement individuel */}
       {isMoving && moveDialog && (
-        <div className="mx-5 mb-3 p-4 rounded-xl space-y-3" style={{ backgroundColor: '#0d0d0d', border: '1px solid #2a2a2a' }}>
+        <div className="mx-5 mb-3 p-4 rounded-xl space-y-3" style={{ backgroundColor: 'var(--color-bg)', border: '1px solid var(--color-input-border)' }}>
           <p className="text-sm font-medium text-slate-300">Déplacer vers</p>
           <select
             value={moveDialog.theme}
             onChange={e => onChangeMoveTheme(e.target.value as ThemeKey)}
             className="w-full rounded-lg px-3 py-2 text-sm text-slate-200 outline-none"
-            style={{ backgroundColor: '#1f1f1f', border: '1px solid #2a2a2a' }}
+            style={{ backgroundColor: 'var(--color-input)', border: '1px solid var(--color-input-border)' }}
           >
             {THEMES.map(t => <option key={t.key} value={t.key}>{t.icon} {t.label}</option>)}
           </select>
@@ -819,7 +819,7 @@ function FileRow({ file, busy, moveDialog, multiSelect, selected, onToggleSelect
             value={moveDialog.subfolder}
             onChange={e => onChangeMoveSubfolder(e.target.value)}
             className="w-full rounded-lg px-3 py-2 text-sm text-slate-200 outline-none"
-            style={{ backgroundColor: '#1f1f1f', border: '1px solid #2a2a2a' }}
+            style={{ backgroundColor: 'var(--color-input)', border: '1px solid var(--color-input-border)' }}
           >
             {getAllSubs(moveDialog.theme).map(s => <option key={s} value={s}>{s}</option>)}
           </select>
@@ -835,7 +835,7 @@ function FileRow({ file, busy, moveDialog, multiSelect, selected, onToggleSelect
             <button
               onClick={onCancelMove}
               className="px-4 text-sm text-slate-300 rounded-lg py-2 transition-colors"
-              style={{ backgroundColor: '#1f1f1f' }}
+              style={{ backgroundColor: 'var(--color-input)' }}
             >
               Annuler
             </button>
@@ -868,7 +868,7 @@ function BulkMoveModal({ state, count, getAllSubs, onChangeTheme, onChangeSubfol
       style={{ backgroundColor: 'rgba(0,0,0,0.7)' }}
       onClick={e => { if (e.target === e.currentTarget && !state.moving) onCancel(); }}
     >
-      <div className="w-full max-w-md rounded-2xl p-6 space-y-5 shadow-2xl" style={{ backgroundColor: '#141414', border: '1px solid #2a2a2a' }}>
+      <div className="w-full max-w-md rounded-2xl p-6 space-y-5 shadow-2xl" style={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-input-border)' }}>
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-base font-semibold text-white">Changer de dossier</h2>
@@ -890,8 +890,8 @@ function BulkMoveModal({ state, count, getAllSubs, onChangeTheme, onChangeSubfol
                 disabled={state.moving}
                 className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium transition-all text-left disabled:opacity-50"
                 style={{
-                  backgroundColor: state.theme === t.key ? '#1f2d4e' : '#1f1f1f',
-                  border: `2px solid ${state.theme === t.key ? t.color : '#2a2a2a'}`,
+                  backgroundColor: state.theme === t.key ? 'color-mix(in srgb, #2563eb 15%, var(--color-card))' : 'var(--color-input)',
+                  border: `2px solid ${state.theme === t.key ? t.color : 'var(--color-input-border)'}`,
                   color: state.theme === t.key ? 'white' : '#64748b',
                 }}
               >
@@ -912,9 +912,9 @@ function BulkMoveModal({ state, count, getAllSubs, onChangeTheme, onChangeSubfol
                 disabled={state.moving}
                 className="rounded-lg px-3 py-1.5 text-xs font-medium transition-all disabled:opacity-50"
                 style={{
-                  backgroundColor: state.subfolder === s ? theme.color : '#1f1f1f',
+                  backgroundColor: state.subfolder === s ? theme.color : 'var(--color-input)',
                   color: state.subfolder === s ? 'white' : '#64748b',
-                  border: `1px solid ${state.subfolder === s ? theme.color : '#2a2a2a'}`,
+                  border: `1px solid ${state.subfolder === s ? theme.color : 'var(--color-input-border)'}`,
                 }}
               >
                 {s}
@@ -930,7 +930,7 @@ function BulkMoveModal({ state, count, getAllSubs, onChangeTheme, onChangeSubfol
               <span>Déplacement en cours…</span>
               <span>{state.progress}%</span>
             </div>
-            <div className="w-full h-1.5 rounded-full" style={{ backgroundColor: '#1f1f1f' }}>
+            <div className="w-full h-1.5 rounded-full" style={{ backgroundColor: 'var(--color-input)' }}>
               <div
                 className="h-1.5 rounded-full transition-all duration-300"
                 style={{ width: `${state.progress}%`, backgroundColor: theme.color }}
@@ -945,7 +945,7 @@ function BulkMoveModal({ state, count, getAllSubs, onChangeTheme, onChangeSubfol
             <button
               onClick={onCancel}
               className="flex-1 rounded-xl py-2.5 text-sm text-slate-300 transition-colors"
-              style={{ backgroundColor: '#1f1f1f', border: '1px solid #2a2a2a' }}
+              style={{ backgroundColor: 'var(--color-input)', border: '1px solid var(--color-input-border)' }}
             >
               Annuler
             </button>

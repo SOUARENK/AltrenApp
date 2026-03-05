@@ -16,7 +16,7 @@ export function SourcesAccordion({ sources }: SourcesAccordionProps) {
       >
         {sources.length} source{sources.length > 1 ? 's' : ''}
       </summary>
-      <div className="mt-2 space-y-1.5 pl-2" style={{ borderLeft: '2px solid #1f1f1f' }}>
+      <div className="mt-2 space-y-1.5 pl-2" style={{ borderLeft: '2px solid var(--color-border)' }}>
         {sources.map((src, i) => (
           <div key={i} className="flex items-start gap-2">
             <FileText size={12} className="mt-0.5 shrink-0" />

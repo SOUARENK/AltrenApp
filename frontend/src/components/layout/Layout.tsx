@@ -6,7 +6,7 @@ export function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ backgroundColor: '#0d0d0d' }}>
+    <div className="flex h-screen overflow-hidden" style={{ backgroundColor: 'var(--color-bg)' }}>
       <Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(o => !o)} />
 
       <main

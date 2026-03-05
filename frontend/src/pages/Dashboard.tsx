@@ -18,7 +18,7 @@ const QUICK_LINKS = [
 ];
 
 function SkeletonLine({ w = 'w-full' }: { w?: string }) {
-  return <div className={`h-4 rounded ${w} animate-pulse`} style={{ backgroundColor: '#1f1f1f' }} />;
+  return <div className={`h-4 rounded ${w} animate-pulse`} style={{ backgroundColor: 'var(--color-border)' }} />;
 }
 
 function EmptyState({ icon, text }: { icon: string; text: string }) {
@@ -68,7 +68,7 @@ export function Dashboard() {
   const outlookConnected = allTodayEvents.length > 0;
 
   return (
-    <div className="p-6 space-y-6" style={{ backgroundColor: '#0d0d0d', minHeight: '100%' }}>
+    <div className="p-6 space-y-6" style={{ backgroundColor: 'var(--color-bg)', minHeight: '100%' }}>
 
       {/* Header */}
       <div className="flex items-start justify-between">
@@ -96,7 +96,7 @@ export function Dashboard() {
             key={to}
             onClick={() => navigate(to)}
             className="rounded-xl p-4 text-left transition-all hover:scale-[1.02] active:scale-[0.98]"
-            style={{ backgroundColor: '#141414', border: '1px solid #1f1f1f' }}
+            style={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)' }}
           >
             <div
               className="w-8 h-8 rounded-lg flex items-center justify-center mb-3"
@@ -114,7 +114,7 @@ export function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
         {/* Aujourd'hui */}
-        <div className="rounded-xl p-4" style={{ backgroundColor: '#141414', border: '1px solid #1f1f1f' }}>
+        <div className="rounded-xl p-4" style={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)' }}>
           <h2 className="text-sm font-semibold text-slate-200 mb-3 flex items-center gap-2">
             <Clock size={15} style={{ color: '#2563eb' }} /> Aujourd'hui
           </h2>
@@ -149,7 +149,7 @@ export function Dashboard() {
         </div>
 
         {/* Tâches */}
-        <div className="rounded-xl p-4" style={{ backgroundColor: '#141414', border: '1px solid #1f1f1f' }}>
+        <div className="rounded-xl p-4" style={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)' }}>
           <h2 className="text-sm font-semibold text-slate-200 mb-3 flex items-center gap-2">
             <CheckCircle2 size={15} style={{ color: '#16a34a' }} /> À faire
           </h2>
@@ -167,7 +167,7 @@ export function Dashboard() {
                   <div key={task.id} className="flex items-start gap-3">
                     <div
                       className="w-4 h-4 rounded border mt-0.5 shrink-0"
-                      style={{ borderColor: urgent ? '#ef4444' : '#2a2a2a' }}
+                      style={{ borderColor: urgent ? '#ef4444' : 'var(--color-input-border)' }}
                     />
                     <div className="min-w-0 flex-1">
                       <p className="text-sm text-slate-200">{task.title}</p>
@@ -186,7 +186,7 @@ export function Dashboard() {
       </div>
 
       {/* Prochains examens */}
-      <div className="rounded-xl p-4" style={{ backgroundColor: '#141414', border: '1px solid #1f1f1f' }}>
+      <div className="rounded-xl p-4" style={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)' }}>
         <h2 className="text-sm font-semibold text-slate-200 mb-3">📅 Prochains examens</h2>
         {loading ? (
           <div className="space-y-3">{[1, 2, 3].map(i => <SkeletonLine key={i} />)}</div>

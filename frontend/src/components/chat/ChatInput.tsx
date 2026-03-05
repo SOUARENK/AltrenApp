@@ -63,9 +63,9 @@ export function ChatInput({ onSend, disabled = false, precision, onPrecisionChan
               onClick={() => onPrecisionChange(opt.value)}
               className="px-3 py-1 rounded-lg text-xs font-medium transition-colors"
               style={{
-                backgroundColor: precision === opt.value ? '#2563eb' : '#1f1f1f',
+                backgroundColor: precision === opt.value ? '#2563eb' : 'var(--color-input)',
                 color: precision === opt.value ? 'white' : '#64748b',
-                border: `1px solid ${precision === opt.value ? '#2563eb' : '#2a2a2a'}`,
+                border: `1px solid ${precision === opt.value ? '#2563eb' : 'var(--color-input-border)'}`,
               }}
             >
               {opt.label}
@@ -77,7 +77,7 @@ export function ChatInput({ onSend, disabled = false, precision, onPrecisionChan
       {/* Zone de saisie */}
       <div
         className="flex items-end gap-2 rounded-2xl px-4 py-3 transition-colors"
-        style={{ backgroundColor: '#1f1f1f', border: '1px solid #2a2a2a' }}
+        style={{ backgroundColor: 'var(--color-input)', border: '1px solid var(--color-input-border)' }}
       >
         <textarea
           ref={textareaRef}

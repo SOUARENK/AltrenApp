@@ -315,12 +315,9 @@ export async function getOutlookStatus(): Promise<OutlookStatus> {
   catch { return { connected: false }; }
 }
 
-export async function connectOutlookImap(email: string, password: string): Promise<{ message: string; email: string }> {
-  return request('/outlook/connect', {
-    method: 'POST',
-    headers: getHeaders(),
-    body: JSON.stringify({ email, password }),
-  });
+export async function getMicrosoftAuthUrl(): Promise<string> {
+  const res = await request<{ auth_url: string }>('/auth/login/microsoft', { method: 'POST', headers: getHeaders() });
+  return res.auth_url;
 }
 
 export async function syncOutlook(): Promise<{ emails_count: number; events_count: number }> {
@@ -372,4 +369,29 @@ export async function disconnectEmail(id: string) {
 
 export async function disconnectCalendar(id: string) {
   return request<void>(`/connect/calendar/${id}`, { method: 'DELETE', headers: getHeaders() });
+}
+
+// ── Mail ──────────────────────────────────────────────────────────────────
+
+export interface MailMessage {
+  id: string;
+  subject: string;
+  from_name: string;
+  from_email: string;
+  received_at: string;
+  preview: string;
+  body_html: string;
+  body_type: 'html' | 'text';
+  is_read: boolean;
+  has_attachments: boolean;
+  importance: 'low' | 'normal' | 'high';
+}
+
+export async function getMailInbox(count = 50): Promise<{ emails: MailMessage[]; not_connected?: boolean }> {
+  return request<{ emails: MailMessage[]; count: number; not_connected?: boolean }>(`/mail/inbox?count=${count}`);
+}
+
+export async function getMailMessage(id: string): Promise<MailMessage> {
+  const res = await request<{ email: MailMessage }>(`/mail/inbox/${encodeURIComponent(id)}`);
+  return res.email;
 }

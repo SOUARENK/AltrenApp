@@ -118,11 +118,11 @@ export function CalendarView({ events, onRangeChange }: CalendarViewProps) {
             </div>
 
             {weekDays.map((day, di) => (
-              <div key={di} className="relative" style={{ borderLeft: '1px solid #1f1f1f' }}>
+              <div key={di} className="relative" style={{ borderLeft: '1px solid var(--color-border)' }}>
                 {HOURS.map(h => (
                   <div
                     key={h}
-                    style={{ height: '48px', borderBottom: '1px solid #1a1a1a' }}
+                    style={{ height: '48px', borderBottom: '1px solid var(--color-card2)' }}
                   />
                 ))}
                 {eventsForDay(day).map(ev => {

@@ -72,15 +72,15 @@ export function ChatSidebar({
   return (
     <div
       className="flex flex-col h-full"
-      style={{ width: '240px', borderRight: '1px solid #1f1f1f', backgroundColor: '#141414' }}
+      style={{ width: '240px', borderRight: '1px solid var(--color-border)', backgroundColor: 'var(--color-card)' }}
     >
       {/* Header */}
-      <div className="px-3 pt-4 pb-2" style={{ borderBottom: '1px solid #1f1f1f' }}>
+      <div className="px-3 pt-4 pb-2" style={{ borderBottom: '1px solid var(--color-border)' }}>
         <p className="text-xs font-semibold text-slate-400 tracking-wide mb-3">AlternApp</p>
         <button
           onClick={onNewChat}
           className="flex items-center gap-2 w-full rounded-lg px-3 py-2 text-sm font-medium transition-colors text-white"
-          style={{ backgroundColor: '#1f2d4e', border: '1px solid #2563eb33' }}
+          style={{ backgroundColor: 'color-mix(in srgb, #2563eb 15%, var(--color-card))', border: '1px solid #2563eb33' }}
         >
           <Plus size={15} style={{ color: '#60a5fa' }} />
           Nouvelle conversation
@@ -88,7 +88,7 @@ export function ChatSidebar({
       </div>
 
       {/* Mode */}
-      <div className="p-3" style={{ borderBottom: '1px solid #1f1f1f' }}>
+      <div className="p-3" style={{ borderBottom: '1px solid var(--color-border)' }}>
         <p className="text-xs font-medium text-slate-500 mb-2 uppercase tracking-wider">Mode</p>
         <div className="grid grid-cols-2 gap-1">
           {MODES.map(m => (
@@ -99,7 +99,7 @@ export function ChatSidebar({
               style={{
                 backgroundColor: mode === m.value ? '#2563eb' : 'transparent',
                 color: mode === m.value ? 'white' : '#64748b',
-                border: `1px solid ${mode === m.value ? '#2563eb' : '#1f1f1f'}`,
+                border: `1px solid ${mode === m.value ? '#2563eb' : 'var(--color-border)'}`,
               }}
             >
               {m.label}
@@ -122,12 +122,12 @@ export function ChatSidebar({
                 <div
                   key={conv.id}
                   className="group flex items-center gap-1 rounded-lg px-2 py-2 transition-colors"
-                  style={{ backgroundColor: currentId === conv.id ? '#1f1f1f' : 'transparent' }}
+                  style={{ backgroundColor: currentId === conv.id ? 'var(--color-border)' : 'transparent' }}
                 >
                   <button
                     onClick={() => onSelectConversation(conv.id)}
                     className="flex items-center gap-2 flex-1 min-w-0 text-left text-sm"
-                    style={{ color: currentId === conv.id ? '#f1f5f9' : '#64748b' }}
+                    style={{ color: currentId === conv.id ? 'var(--color-text)' : '#64748b' }}
                   >
                     <MessageSquare size={13} className="shrink-0" />
                     <span className="truncate">{conv.title ?? 'Sans titre'}</span>
@@ -148,7 +148,7 @@ export function ChatSidebar({
       </div>
 
       {/* Bottom actions */}
-      <div className="px-2 py-3 space-y-1" style={{ borderTop: '1px solid #1f1f1f' }}>
+      <div className="px-2 py-3 space-y-1" style={{ borderTop: '1px solid var(--color-border)' }}>
         <button
           onClick={() => fileRef.current?.click()}
           className="flex items-center gap-2 w-full rounded-lg px-3 py-2 text-xs text-slate-400 hover:text-white transition-colors hover:bg-white/5"

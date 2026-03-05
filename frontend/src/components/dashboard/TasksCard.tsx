@@ -27,7 +27,7 @@ export function TasksCard({ tasks, isLoading }: TasksCardProps) {
   return (
     <div
       className="rounded-xl p-4"
-      style={{ backgroundColor: '#141414', border: '1px solid #1f1f1f' }}
+      style={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)' }}
     >
       <h3 className="text-sm font-semibold text-slate-300 mb-3 flex items-center gap-2">
         <CheckSquare size={16} style={{ color: '#2563eb' }} />
@@ -35,7 +35,7 @@ export function TasksCard({ tasks, isLoading }: TasksCardProps) {
         {!isLoading && urgent.length > 0 && (
           <span
             className="ml-auto text-xs rounded-full px-2 py-0.5"
-            style={{ backgroundColor: '#7f1d1d', color: '#fca5a5' }}
+            style={{ backgroundColor: 'var(--color-error-border)', color: 'var(--color-error-text)' }}
           >
             {urgent.length}
           </span>

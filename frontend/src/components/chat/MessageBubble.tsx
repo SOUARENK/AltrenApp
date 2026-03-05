@@ -18,7 +18,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
           style={
             isUser
               ? { backgroundColor: '#2563eb', color: 'white', borderBottomRightRadius: '4px', whiteSpace: 'pre-wrap' }
-              : { backgroundColor: '#1f1f1f', color: '#f1f5f9', borderBottomLeftRadius: '4px' }
+              : { backgroundColor: 'var(--color-input)', color: 'var(--color-text)', borderBottomLeftRadius: '4px' }
           }
         >
           {isUser ? (
@@ -38,11 +38,11 @@ export function MessageBubble({ message }: MessageBubbleProps) {
                 li: ({ children }) => <li className="text-slate-200">{children}</li>,
                 code: ({ inline, children }: any) =>
                   inline ? (
-                    <code className="rounded px-1 py-0.5 text-xs font-mono" style={{ backgroundColor: '#0d0d0d', color: '#60a5fa' }}>
+                    <code className="rounded px-1 py-0.5 text-xs font-mono" style={{ backgroundColor: 'var(--color-bg)', color: '#60a5fa' }}>
                       {children}
                     </code>
                   ) : (
-                    <code className="block rounded-lg px-3 py-2 text-xs font-mono overflow-x-auto mb-2" style={{ backgroundColor: '#0d0d0d', color: '#a5f3fc' }}>
+                    <code className="block rounded-lg px-3 py-2 text-xs font-mono overflow-x-auto mb-2" style={{ backgroundColor: 'var(--color-bg)', color: '#a5f3fc' }}>
                       {children}
                     </code>
                   ),
@@ -54,25 +54,25 @@ export function MessageBubble({ message }: MessageBubbleProps) {
                 ),
                 table: ({ children }) => (
                   <div className="overflow-x-auto mb-2">
-                    <table className="w-full text-xs border-collapse" style={{ borderColor: '#2a2a2a' }}>
+                    <table className="w-full text-xs border-collapse" style={{ borderColor: 'var(--color-input-border)' }}>
                       {children}
                     </table>
                   </div>
                 ),
-                thead: ({ children }) => <thead style={{ backgroundColor: '#0d0d0d' }}>{children}</thead>,
+                thead: ({ children }) => <thead style={{ backgroundColor: 'var(--color-bg)' }}>{children}</thead>,
                 tbody: ({ children }) => <tbody>{children}</tbody>,
-                tr: ({ children }) => <tr style={{ borderBottom: '1px solid #2a2a2a' }}>{children}</tr>,
+                tr: ({ children }) => <tr style={{ borderBottom: '1px solid var(--color-input-border)' }}>{children}</tr>,
                 th: ({ children }) => (
-                  <th className="px-3 py-2 text-left font-semibold text-slate-300" style={{ border: '1px solid #2a2a2a' }}>
+                  <th className="px-3 py-2 text-left font-semibold text-slate-300" style={{ border: '1px solid var(--color-input-border)' }}>
                     {children}
                   </th>
                 ),
                 td: ({ children }) => (
-                  <td className="px-3 py-2 text-slate-300" style={{ border: '1px solid #2a2a2a' }}>
+                  <td className="px-3 py-2 text-slate-300" style={{ border: '1px solid var(--color-input-border)' }}>
                     {children}
                   </td>
                 ),
-                hr: () => <hr className="my-3" style={{ borderColor: '#2a2a2a' }} />,
+                hr: () => <hr className="my-3" style={{ borderColor: 'var(--color-input-border)' }} />,
                 a: ({ href, children }) => (
                   <a href={href} target="_blank" rel="noopener noreferrer" className="underline hover:opacity-80" style={{ color: '#60a5fa' }}>
                     {children}

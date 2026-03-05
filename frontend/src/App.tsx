@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 import { Layout } from './components/layout/Layout';
 import { Dashboard } from './pages/Dashboard';
 import { Chat } from './pages/Chat';
@@ -7,6 +8,7 @@ import { Agenda } from './pages/Agenda';
 import { Files } from './pages/Files';
 import { Revision } from './pages/Revision';
 import { Settings } from './pages/Settings';
+import { MailPage } from './pages/Mail';
 
 function AppRoutes() {
   return (
@@ -19,6 +21,7 @@ function AppRoutes() {
         <Route path="files" element={<Files />} />
         <Route path="revision" element={<Revision />} />
         <Route path="settings" element={<Settings />} />
+        <Route path="mail" element={<MailPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
@@ -27,10 +30,12 @@ function AppRoutes() {
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <AppRoutes />
-      </AuthProvider>
-    </BrowserRouter>
+    <ThemeProvider>
+      <BrowserRouter>
+        <AuthProvider>
+          <AppRoutes />
+        </AuthProvider>
+      </BrowserRouter>
+    </ThemeProvider>
   );
 }

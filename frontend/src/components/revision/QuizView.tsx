@@ -38,9 +38,9 @@ export function QuizView({ questions, onComplete }: QuizViewProps) {
         <div
           className="w-20 h-20 rounded-full flex items-center justify-center text-3xl font-bold"
           style={{
-            backgroundColor: pct >= 60 ? '#052e16' : '#450a0a',
-            color: pct >= 60 ? '#86efac' : '#fca5a5',
-            border: `2px solid ${pct >= 60 ? '#166534' : '#7f1d1d'}`,
+            backgroundColor: pct >= 60 ? 'var(--color-success-bg)' : 'var(--color-error-bg)',
+            color: pct >= 60 ? 'var(--color-success-text)' : 'var(--color-error-text)',
+            border: `2px solid ${pct >= 60 ? 'var(--color-success-border)' : 'var(--color-error-border)'}`,
           }}
         >
           {pct}%
@@ -61,7 +61,7 @@ export function QuizView({ questions, onComplete }: QuizViewProps) {
         <span className="text-xs text-slate-500">
           Question {current + 1}/{questions.length}
         </span>
-        <div className="flex-1 rounded-full h-1" style={{ backgroundColor: '#1f1f1f' }}>
+        <div className="flex-1 rounded-full h-1" style={{ backgroundColor: 'var(--color-input)' }}>
           <div
             className="rounded-full h-1 transition-all"
             style={{ width: `${((current + 1) / questions.length) * 100}%`, backgroundColor: '#2563eb' }}
@@ -73,13 +73,13 @@ export function QuizView({ questions, onComplete }: QuizViewProps) {
 
       <div className="space-y-2">
         {question.options.map((opt, i) => {
-          let bg = '#141414';
-          let border = '#1f1f1f';
-          let color = '#94a3b8';
+          let bg = 'var(--color-card)';
+          let border = 'var(--color-border)';
+          let color = 'var(--color-muted2)';
 
           if (selected !== null) {
-            if (i === question.correctIndex) { bg = '#052e16'; border = '#166534'; color = '#86efac'; }
-            else if (i === selected) { bg = '#450a0a'; border = '#7f1d1d'; color = '#fca5a5'; }
+            if (i === question.correctIndex) { bg = 'var(--color-success-bg)'; border = 'var(--color-success-border)'; color = 'var(--color-success-text)'; }
+            else if (i === selected) { bg = 'var(--color-error-bg)'; border = 'var(--color-error-border)'; color = 'var(--color-error-text)'; }
           }
 
           return (
@@ -94,7 +94,7 @@ export function QuizView({ questions, onComplete }: QuizViewProps) {
               {(selected === null || (i !== question.correctIndex && i !== selected)) && (
                 <span
                   className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium shrink-0"
-                  style={{ backgroundColor: '#1f1f1f', color: '#64748b' }}
+                  style={{ backgroundColor: 'var(--color-input)', color: '#64748b' }}
                 >
                   {String.fromCharCode(65 + i)}
                 </span>
@@ -110,7 +110,7 @@ export function QuizView({ questions, onComplete }: QuizViewProps) {
           {question.explanation && (
             <p
               className="text-xs rounded-lg px-3 py-2 mb-3"
-              style={{ backgroundColor: '#0f172a', color: '#93c5fd', border: '1px solid #1e3a5f' }}
+              style={{ backgroundColor: 'var(--color-card)', color: '#93c5fd', border: '1px solid var(--color-border)' }}
             >
               {question.explanation}
             </p>

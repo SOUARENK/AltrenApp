@@ -4,8 +4,19 @@ Routes Dashboard — GET /dashboard/summary, GET /dashboard/tasks
 
 import logging
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, HTTPException
+
+_PARIS_TZ = ZoneInfo("Europe/Paris")
+
+
+def _paris_date(dt_str: str) -> str:
+    try:
+        dt = datetime.fromisoformat(dt_str.replace("Z", "+00:00"))
+        return dt.astimezone(_PARIS_TZ).date().isoformat()
+    except Exception:
+        return dt_str[:10]
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Dashboard"])
@@ -19,7 +30,7 @@ async def get_dashboard_summary():
     - school : prochains examens (ENT si connecté)
     - work : tickets Jira (si configuré)
     """
-    today_str = datetime.now(timezone.utc).date().isoformat()
+    today_str = datetime.now(ZoneInfo("Europe/Paris")).date().isoformat()
     today_events = []
 
     try:
@@ -27,8 +38,8 @@ async def get_dashboard_summary():
         token = get_valid_token()
         raw_events = fetch_calendar_events(token, days=1)
         for e in raw_events:
-            event_start = e.get("start", {}).get("dateTime", "")[:10]
-            if event_start == today_str:
+            dt_str = e.get("start", {}).get("dateTime", "")
+            if _paris_date(dt_str) == today_str:
                 today_events.append({
                     "id": e.get("id", ""),
                     "title": e.get("subject", "(Sans titre)"),

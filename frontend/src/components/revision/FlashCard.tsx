@@ -29,8 +29,8 @@ export function FlashCard({ card, onKnow, onReview }: FlashCardProps) {
           <div
             className="absolute inset-0 rounded-2xl flex flex-col items-center justify-center p-6 text-center"
             style={{
-              backgroundColor: '#141414',
-              border: '1px solid #1f1f1f',
+              backgroundColor: 'var(--color-card)',
+              border: '1px solid var(--color-border)',
               backfaceVisibility: 'hidden',
             }}
           >
@@ -42,14 +42,14 @@ export function FlashCard({ card, onKnow, onReview }: FlashCardProps) {
           <div
             className="absolute inset-0 rounded-2xl flex flex-col items-center justify-center p-6 text-center"
             style={{
-              backgroundColor: '#0f2040',
-              border: '1px solid #1e3a5f',
+              backgroundColor: 'color-mix(in srgb, var(--color-accent) 12%, var(--color-card))',
+              border: '1px solid color-mix(in srgb, var(--color-accent) 35%, var(--color-border))',
               backfaceVisibility: 'hidden',
               transform: 'rotateY(180deg)',
             }}
           >
-            <p className="text-xs text-blue-400 mb-4 uppercase tracking-wider">Réponse</p>
-            <p className="text-base text-slate-200 leading-relaxed">{card.answer}</p>
+            <p className="text-xs mb-4 uppercase tracking-wider" style={{ color: 'var(--color-accent)' }}>Réponse</p>
+            <p className="text-base leading-relaxed" style={{ color: 'var(--color-text)' }}>{card.answer}</p>
           </div>
         </div>
       </div>
@@ -67,7 +67,7 @@ export function FlashCard({ card, onKnow, onReview }: FlashCardProps) {
             <button
               onClick={() => { setFlipped(false); onReview(card.id); }}
               className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-colors"
-              style={{ backgroundColor: '#450a0a', color: '#fca5a5', border: '1px solid #7f1d1d' }}
+              style={{ backgroundColor: 'var(--color-error-bg)', color: 'var(--color-error-text)', border: '1px solid var(--color-error-border)' }}
             >
               <X size={16} />
               À revoir
@@ -75,7 +75,7 @@ export function FlashCard({ card, onKnow, onReview }: FlashCardProps) {
             <button
               onClick={() => { setFlipped(false); onKnow(card.id); }}
               className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-colors"
-              style={{ backgroundColor: '#052e16', color: '#86efac', border: '1px solid #166534' }}
+              style={{ backgroundColor: 'var(--color-success-bg)', color: 'var(--color-success-text)', border: '1px solid var(--color-success-border)' }}
             >
               <Check size={16} />
               Je sais

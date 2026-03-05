@@ -62,7 +62,7 @@ export function Chat() {
   };
 
   return (
-    <div className="flex h-full" style={{ backgroundColor: '#0d0d0d' }}>
+    <div className="flex h-full" style={{ backgroundColor: 'var(--color-bg)' }}>
       <ChatSidebar
         history={history}
         mode={mode}

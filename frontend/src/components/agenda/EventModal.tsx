@@ -29,7 +29,7 @@ export function EventModal({ event, onClose }: EventModalProps) {
     >
       <div
         className="w-full max-w-md rounded-2xl p-6 relative"
-        style={{ backgroundColor: '#141414', border: '1px solid #1f1f1f' }}
+        style={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)' }}
         onClick={e => e.stopPropagation()}
       >
         <button
@@ -87,7 +87,7 @@ export function EventModal({ event, onClose }: EventModalProps) {
           )}
 
           {event.description && (
-            <p className="text-slate-400 leading-relaxed mt-3 pt-3" style={{ borderTop: '1px solid #1f1f1f' }}>
+            <p className="text-slate-400 leading-relaxed mt-3 pt-3" style={{ borderTop: '1px solid var(--color-border)' }}>
               {event.description}
             </p>
           )}
