@@ -2,12 +2,15 @@
 Routes Révision — Génération de flashcards et QCM à partir des documents indexés.
 """
 
+import hashlib
 import json
 import logging
 import os
+import time
+from threading import Lock
 
 from fastapi import APIRouter, HTTPException
-from openai import OpenAI
+from openai import OpenAI, RateLimitError
 
 from models.schemas import RevisionRequest, RevisionResponse
 from services.rag_engine import _get_supabase_client
@@ -16,6 +19,11 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Révision"])
 
 _llm: OpenAI | None = None
+
+# ── Cache mémoire (évite de régénérer le même contenu) ───────────────────────
+_cache: dict[str, dict] = {}
+_cache_lock = Lock()
+_CACHE_TTL = 3600  # 1 heure
 
 
 def _get_llm() -> OpenAI:
@@ -26,6 +34,49 @@ def _get_llm() -> OpenAI:
             raise ValueError("OPENAI_API_KEY manquante.")
         _llm = OpenAI(api_key=key)
     return _llm
+
+
+def _cache_get(key: str) -> dict | None:
+    with _cache_lock:
+        entry = _cache.get(key)
+        if entry and (time.time() - entry["ts"]) < _CACHE_TTL:
+            return entry["data"]
+        if entry:
+            del _cache[key]
+    return None
+
+
+def _cache_set(key: str, data: dict) -> None:
+    with _cache_lock:
+        _cache[key] = {"data": data, "ts": time.time()}
+
+
+def _make_cache_key(filename: str | None, theme: str | None, subfolder: str | None,
+                   mode: str, difficulty: str) -> str:
+    raw = f"{filename}|{theme}|{subfolder}|{mode}|{difficulty}"
+    return hashlib.md5(raw.encode()).hexdigest()
+
+
+def _llm_call(messages: list, temperature: float, max_tokens: int,
+              model: str = "gpt-4o-mini", max_retries: int = 4) -> str:
+    """Appel OpenAI avec retry exponentiel sur RateLimitError."""
+    client = _get_llm()
+    for attempt in range(max_retries):
+        try:
+            resp = client.chat.completions.create(
+                model=model,
+                messages=messages,
+                temperature=temperature,
+                max_tokens=max_tokens,
+            )
+            return (resp.choices[0].message.content or "").strip()
+        except RateLimitError as exc:
+            if attempt == max_retries - 1:
+                raise
+            wait = min(10 * 2 ** attempt, 60)  # 10s, 20s, 40s, 60s max
+            logger.warning("Rate limit OpenAI, nouvelle tentative dans %ds (%d/%d)…", wait, attempt + 1, max_retries - 1)
+            time.sleep(wait)
+    raise RuntimeError("Max retries dépassé")
 
 
 def _fetch_chunks(filename: str | None, theme: str | None, subfolder: str | None) -> list[str]:
@@ -131,6 +182,15 @@ Texte source :
 @router.post("/revision/generate", response_model=RevisionResponse)
 async def generate_revision(body: RevisionRequest):
     """Génère des flashcards, un QCM ou une fiche de révision HTML."""
+    difficulty = body.difficulty if body.difficulty in _DIFFICULTY_COUNT else "easy"
+
+    # ── Vérification du cache ─────────────────────────────────────────────────
+    cache_key = _make_cache_key(body.filename, body.theme, body.subfolder, body.mode, difficulty)
+    cached = _cache_get(cache_key)
+    if cached:
+        logger.info("Cache hit pour %s/%s/%s", body.filename or body.theme, body.mode, difficulty)
+        return RevisionResponse(**cached)
+
     chunks = _fetch_chunks(body.filename, body.theme, body.subfolder)
     if not chunks:
         raise HTTPException(status_code=404, detail="Aucun document trouvé pour ce filtre.")
@@ -140,9 +200,7 @@ async def generate_revision(body: RevisionRequest):
         text = "\n\n".join(chunks)[:14000]
         prompt = _SUMMARY_PROMPT.format(text=text)
         try:
-            client = _get_llm()
-            resp = client.chat.completions.create(
-                model="gpt-4o-mini",
+            html = _llm_call(
                 messages=[
                     {"role": "system", "content": "Tu es un expert pédagogue. Tu génères des fiches de révision visuelles, colorées et claires en HTML avec styles inline uniquement."},
                     {"role": "user", "content": prompt},
@@ -150,18 +208,25 @@ async def generate_revision(body: RevisionRequest):
                 temperature=0.6,
                 max_tokens=4000,
             )
-            html = (resp.choices[0].message.content or "").strip()
             if html.startswith("```"):
                 html = html.split("```")[1]
                 if html.startswith("html"):
                     html = html[4:]
-            return RevisionResponse(mode="summary", items=[], html=html.strip())
+            html = html.strip()
+            result = {"mode": "summary", "items": [], "html": html}
+            _cache_set(cache_key, result)
+            return RevisionResponse(**result)
+        except RateLimitError as exc:
+            logger.error("Rate limit OpenAI épuisé : %s", exc)
+            raise HTTPException(
+                status_code=429,
+                detail="Limite de requêtes OpenAI atteinte. Réessaie dans quelques minutes ou vérifie ton quota sur platform.openai.com."
+            ) from exc
         except Exception as exc:
             logger.exception("Erreur génération fiche : %s", exc)
             raise HTTPException(status_code=500, detail=f"Erreur génération : {type(exc).__name__} — {exc}") from exc
 
     # ── Mode flashcard / quiz ────────────────────────────────────────────────
-    difficulty = body.difficulty if body.difficulty in _DIFFICULTY_COUNT else "easy"
     count = _DIFFICULTY_COUNT[difficulty]
     text_limit = 6000 if difficulty == "easy" else 10000 if difficulty == "medium" else 14000
     text = "\n\n".join(chunks)[:text_limit]
@@ -170,9 +235,7 @@ async def generate_revision(body: RevisionRequest):
     prompt = prompts[difficulty].format(count=count, text=text)
 
     try:
-        client = _get_llm()
-        resp = client.chat.completions.create(
-            model="gpt-4o-mini",
+        raw = _llm_call(
             messages=[
                 {"role": "system", "content": "Tu es un assistant pédagogique expert en création de contenu de révision."},
                 {"role": "user", "content": prompt},
@@ -180,7 +243,6 @@ async def generate_revision(body: RevisionRequest):
             temperature=0.7,
             max_tokens=3000,
         )
-        raw = (resp.choices[0].message.content or "[]").strip()
         if raw.startswith("```"):
             raw = raw.split("```")[1]
             if raw.startswith("json"):
@@ -190,8 +252,16 @@ async def generate_revision(body: RevisionRequest):
     except json.JSONDecodeError as exc:
         logger.error("JSON invalide reçu d'OpenAI : %s", exc)
         raise HTTPException(status_code=500, detail="Réponse OpenAI invalide.") from exc
+    except RateLimitError as exc:
+        logger.error("Rate limit OpenAI épuisé : %s", exc)
+        raise HTTPException(
+            status_code=429,
+            detail="Limite de requêtes OpenAI atteinte. Réessaie dans quelques minutes ou vérifie ton quota sur platform.openai.com."
+        ) from exc
     except Exception as exc:
         logger.exception("Erreur génération révision : %s", exc)
         raise HTTPException(status_code=500, detail=f"Erreur génération : {type(exc).__name__} — {exc}") from exc
 
+    result = {"mode": body.mode, "items": items, "html": None}
+    _cache_set(cache_key, result)
     return RevisionResponse(mode=body.mode, items=items)
