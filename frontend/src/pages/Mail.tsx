@@ -113,9 +113,9 @@ function EmailDetail({ email }: { email: MailMessage }) {
       <div className="flex-1 overflow-y-auto p-6">
         {email.body_type === 'html' ? (
           <iframe
-            srcDoc={email.body_html}
+            srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><style>html,body{background:#ffffff!important;color:#1a1a1a!important;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;line-height:1.6;margin:0;padding:16px}a{color:#2563eb}img{max-width:100%;height:auto}</style></head><body>${email.body_html}</body></html>`}
             className="w-full border-0 rounded-lg"
-            style={{ minHeight: '500px', backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)' }}
+            style={{ minHeight: '500px', backgroundColor: '#ffffff', border: '1px solid var(--color-border)' }}
             sandbox="allow-same-origin"
             title="Corps du mail"
           />
