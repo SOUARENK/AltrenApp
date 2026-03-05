@@ -816,7 +816,9 @@ interface ContextMenuItem {
 
 function ContextMenu({ items }: { items: ContextMenuItem[] }) {
   const [open, setOpen] = useState(false);
+  const [openUpward, setOpenUpward] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -827,10 +829,23 @@ function ContextMenu({ items }: { items: ContextMenuItem[] }) {
     return () => document.removeEventListener('mousedown', handle);
   }, [open]);
 
+  const handleToggle = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!open && btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect();
+      const itemCount = items.filter(i => !i.separator).length;
+      const sepCount  = items.filter(i =>  i.separator).length;
+      const estimatedHeight = itemCount * 38 + sepCount * 5 + 8;
+      setOpenUpward(window.innerHeight - rect.bottom < estimatedHeight);
+    }
+    setOpen(o => !o);
+  };
+
   return (
     <div ref={ref} className="relative" onClick={e => e.stopPropagation()}>
       <button
-        onClick={e => { e.stopPropagation(); setOpen(o => !o); }}
+        ref={btnRef}
+        onClick={handleToggle}
         className="w-7 h-7 flex items-center justify-center rounded-lg transition-colors hover:bg-white/5"
         style={{ color: open ? 'var(--color-text)' : 'var(--color-muted)' }}
         title="Actions"
@@ -839,7 +854,7 @@ function ContextMenu({ items }: { items: ContextMenuItem[] }) {
       </button>
       {open && (
         <div
-          className="absolute right-0 top-8 z-30 rounded-xl overflow-hidden shadow-xl"
+          className={`absolute right-0 z-50 rounded-xl overflow-hidden shadow-xl ${openUpward ? 'bottom-8' : 'top-8'}`}
           style={{ minWidth: '170px', backgroundColor: 'var(--color-card2)', border: '1px solid var(--color-input-border)' }}
         >
           {items.map((item, i) =>
