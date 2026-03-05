@@ -12,7 +12,12 @@ export function useAgenda() {
     setError(null);
     try {
       const data = await getAgendaEvents(start, end);
-      setEvents(data);
+      let localEvents: AgendaEvent[] = [];
+      try {
+        const raw = localStorage.getItem('local_agenda_events');
+        if (raw) localEvents = JSON.parse(raw) as AgendaEvent[];
+      } catch {}
+      setEvents([...data, ...localEvents]);
     } catch (err: any) {
       setError(err.message ?? 'Erreur lors du chargement de l\'agenda');
     } finally {

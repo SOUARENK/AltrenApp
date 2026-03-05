@@ -6,7 +6,7 @@ import type { DashboardData, Task } from '../types';
 import {
   MessageSquare, Calendar, FolderOpen, BookOpen,
   Clock, CheckCircle2, AlertCircle, Wifi, WifiOff,
-  GripVertical, Plus, Trash2, X,
+  GripVertical, Plus, Trash2, X, Check,
 } from 'lucide-react';
 
 const TODAY = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -18,7 +18,20 @@ const QUICK_LINKS = [
   { to: '/revision', icon: BookOpen, label: 'Révision', desc: 'Flashcards & QCM', color: '#16a34a' },
 ];
 
-interface LocalTask { id: string; text: string; done: boolean; }
+interface LocalTask { id: string; text: string; done: boolean; dueDate?: string; }
+
+function isNearDeadline(dueDate?: string): boolean {
+  if (!dueDate) return false;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const due = new Date(dueDate); due.setHours(0, 0, 0, 0);
+  const diff = (due.getTime() - today.getTime()) / 86400000;
+  return diff >= 0 && diff <= 1;
+}
+
+function formatTaskDate(iso: string) {
+  try { return new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }); }
+  catch { return iso; }
+}
 
 function SkeletonLine({ w = 'w-full' }: { w?: string }) {
   return <div className={`h-4 rounded ${w} animate-pulse`} style={{ backgroundColor: 'var(--color-border)' }} />;
@@ -55,6 +68,7 @@ export function Dashboard() {
   });
   const [addingTask, setAddingTask] = useState(false);
   const [newTaskText, setNewTaskText] = useState('');
+  const [newTaskDate, setNewTaskDate] = useState('');
   const dragSrcIdx = useRef<number | null>(null);
 
   useEffect(() => {
@@ -63,12 +77,28 @@ export function Dashboard() {
 
   const addTask = () => {
     if (!newTaskText.trim()) return;
-    setLocalTasks(prev => [...prev, { id: crypto.randomUUID(), text: newTaskText.trim(), done: false }]);
+    const id = crypto.randomUUID();
+    const task: LocalTask = { id, text: newTaskText.trim(), done: false, dueDate: newTaskDate || undefined };
+    setLocalTasks(prev => [task, ...prev]);
+    if (newTaskDate) {
+      try {
+        const stored = JSON.parse(localStorage.getItem('local_agenda_events') ?? '[]');
+        stored.push({ id: `task-${id}`, title: `📋 ${newTaskText.trim()}`, start: `${newTaskDate}T08:00:00`, end: `${newTaskDate}T09:00:00`, source: 'perso', description: 'Tâche depuis le tableau de bord' });
+        localStorage.setItem('local_agenda_events', JSON.stringify(stored));
+      } catch {}
+    }
     setNewTaskText('');
+    setNewTaskDate('');
     setAddingTask(false);
   };
   const toggleTask = (id: string) => setLocalTasks(prev => prev.map(t => t.id === id ? { ...t, done: !t.done } : t));
-  const deleteTask = (id: string) => setLocalTasks(prev => prev.filter(t => t.id !== id));
+  const deleteTask = (id: string) => {
+    setLocalTasks(prev => prev.filter(t => t.id !== id));
+    try {
+      const stored = JSON.parse(localStorage.getItem('local_agenda_events') ?? '[]');
+      localStorage.setItem('local_agenda_events', JSON.stringify(stored.filter((e: any) => e.id !== `task-${id}`)));
+    } catch {}
+  };
   const handleDragStart = (idx: number) => { dragSrcIdx.current = idx; };
   const handleDragOver = (e: React.DragEvent, idx: number) => {
     e.preventDefault();
@@ -145,67 +175,44 @@ export function Dashboard() {
         ))}
       </div>
 
-      {/* 3-col grid: left (Aujourd'hui + Examens) | right 2 cols (À faire) */}
+      {/* 3 colonnes égales: Aujourd'hui | À faire | Prochains examens */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
 
-        {/* Left column: Aujourd'hui + Prochains examens */}
-        <div className="flex flex-col gap-4">
-
-          {/* Aujourd'hui */}
-          <div className="rounded-xl p-4" style={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)' }}>
-            <h2 className="text-sm font-semibold text-slate-200 mb-3 flex items-center gap-2">
-              <Clock size={15} style={{ color: '#2563eb' }} /> Aujourd'hui
-            </h2>
-            {loading ? (
-              <div className="space-y-3">
-                {[1, 2, 3].map(i => <SkeletonLine key={i} w={i === 2 ? 'w-4/5' : 'w-full'} />)}
-              </div>
-            ) : allTodayEvents.length === 0 ? (
-              <EmptyState icon="📅" text="Aucun événement — connectez Outlook dans les paramètres" />
-            ) : (
-              <div className="space-y-2.5">
-                {allTodayEvents.map((ev, i) => {
-                  const color = ev.source === 'ecole' ? '#16a34a' : '#2563eb';
-                  const tag = ev.source === 'ecole' ? 'École' : 'Entreprise';
-                  return (
-                    <div key={ev.id ?? i} className="flex items-center gap-3">
-                      <span className="text-xs font-mono text-slate-500 w-10 shrink-0">{formatEventTime(ev.start)}</span>
-                      <div className="w-1 h-8 rounded-full shrink-0" style={{ backgroundColor: color }} />
-                      <div className="min-w-0">
-                        <p className="text-sm text-slate-200 truncate">{ev.title}</p>
-                        <span className="text-xs px-1.5 py-0.5 rounded" style={{ backgroundColor: `${color}22`, color }}>{tag}</span>
-                      </div>
+        {/* Col 1: Aujourd'hui */}
+        <div className="rounded-xl p-4" style={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)' }}>
+          <h2 className="text-sm font-semibold text-slate-200 mb-3 flex items-center gap-2">
+            <Clock size={15} style={{ color: '#2563eb' }} /> Aujourd'hui
+          </h2>
+          {loading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map(i => <SkeletonLine key={i} w={i === 2 ? 'w-4/5' : 'w-full'} />)}
+            </div>
+          ) : allTodayEvents.length === 0 ? (
+            <EmptyState icon="📅" text="Aucun événement — connectez Outlook dans les paramètres" />
+          ) : (
+            <div className="space-y-2.5">
+              {allTodayEvents.map((ev, i) => {
+                const color = ev.source === 'ecole' ? '#16a34a' : '#2563eb';
+                const tag = ev.source === 'ecole' ? 'École' : 'Entreprise';
+                return (
+                  <div key={ev.id ?? i} className="flex items-center gap-3">
+                    <span className="text-xs font-mono text-slate-500 w-10 shrink-0">{formatEventTime(ev.start)}</span>
+                    <div className="w-1 h-8 rounded-full shrink-0" style={{ backgroundColor: color }} />
+                    <div className="min-w-0">
+                      <p className="text-sm text-slate-200 truncate">{ev.title}</p>
+                      <span className="text-xs px-1.5 py-0.5 rounded" style={{ backgroundColor: `${color}22`, color }}>{tag}</span>
                     </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* Prochains examens */}
-          <div className="rounded-xl p-4" style={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)' }}>
-            <h2 className="text-sm font-semibold text-slate-200 mb-3">📅 Prochains examens</h2>
-            {loading ? (
-              <div className="space-y-3">{[1, 2].map(i => <SkeletonLine key={i} />)}</div>
-            ) : exams.length === 0 ? (
-              <EmptyState icon="📖" text="Aucun examen — connectez votre ENT" />
-            ) : (
-              <div className="space-y-2">
-                {exams.map((exam, i) => (
-                  <div key={i} className="flex items-center justify-between gap-2">
-                    <span className="text-sm text-slate-300 truncate">{exam.subject}</span>
-                    <span className="text-xs text-slate-500 shrink-0">{exam.date}</span>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
-        {/* Right 2 cols: À faire */}
+        {/* Col 2: À faire */}
         <div
-          className="lg:col-span-2 rounded-xl p-4 flex flex-col"
-          style={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)', minHeight: '440px' }}
+          className="rounded-xl p-4 flex flex-col"
+          style={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)', minHeight: '360px' }}
         >
           {/* Header */}
           <div className="flex items-center justify-between mb-3">
@@ -222,10 +229,10 @@ export function Dashboard() {
             </button>
           </div>
 
-          {/* Inline add input */}
+          {/* Inline add form */}
           {addingTask && (
             <div
-              className="flex items-center gap-2 mb-3 rounded-lg px-3 py-2"
+              className="mb-3 rounded-lg p-3 space-y-2"
               style={{ backgroundColor: 'var(--color-input)', border: '1px solid var(--color-input-border)' }}
             >
               <input
@@ -234,29 +241,41 @@ export function Dashboard() {
                 onChange={e => setNewTaskText(e.target.value)}
                 onKeyDown={e => {
                   if (e.key === 'Enter') addTask();
-                  if (e.key === 'Escape') { setAddingTask(false); setNewTaskText(''); }
+                  if (e.key === 'Escape') { setAddingTask(false); setNewTaskText(''); setNewTaskDate(''); }
                 }}
                 placeholder="Nouvelle tâche…"
-                className="flex-1 bg-transparent text-sm outline-none"
+                className="w-full bg-transparent text-sm outline-none"
                 style={{ color: 'var(--color-text)' }}
               />
-              <button onClick={addTask} className="text-xs font-medium transition-colors" style={{ color: '#16a34a' }}>
-                Ajouter
-              </button>
-              <button
-                onClick={() => { setAddingTask(false); setNewTaskText(''); }}
-                className="transition-colors hover:text-white"
-                style={{ color: '#64748b' }}
-              >
-                <X size={14} />
-              </button>
+              <div className="flex items-center gap-2">
+                <input
+                  type="date"
+                  value={newTaskDate}
+                  onChange={e => setNewTaskDate(e.target.value)}
+                  className="flex-1 bg-transparent text-xs outline-none rounded"
+                  style={{ color: newTaskDate ? 'var(--color-text)' : '#64748b', colorScheme: 'dark' }}
+                />
+                <span className="text-xs shrink-0" style={{ color: '#475569' }}>Date limite (optionnelle)</span>
+              </div>
+              <div className="flex justify-end gap-2">
+                <button onClick={addTask} className="text-xs font-medium px-2 py-1 rounded" style={{ color: '#16a34a', backgroundColor: '#16a34a22' }}>
+                  Ajouter
+                </button>
+                <button
+                  onClick={() => { setAddingTask(false); setNewTaskText(''); setNewTaskDate(''); }}
+                  className="text-xs px-2 py-1 rounded transition-colors hover:text-white"
+                  style={{ color: '#64748b' }}
+                >
+                  <X size={13} />
+                </button>
+              </div>
             </div>
           )}
 
           {/* Task list */}
           {loading ? (
             <div className="space-y-3 flex-1">
-              {[1, 2, 3, 4].map(i => <SkeletonLine key={i} w={i === 4 ? 'w-3/4' : 'w-full'} />)}
+              {[1, 2, 3].map(i => <SkeletonLine key={i} w={i === 3 ? 'w-3/4' : 'w-full'} />)}
             </div>
           ) : localTasks.length === 0 && tasks.length === 0 ? (
             <div className="flex-1 flex items-center justify-center">
@@ -265,49 +284,65 @@ export function Dashboard() {
           ) : (
             <div className="space-y-1 flex-1 overflow-y-auto">
 
-              {/* User local tasks (interactive, draggable) */}
-              {localTasks.map((task, idx) => (
-                <div
-                  key={task.id}
-                  draggable
-                  onDragStart={() => handleDragStart(idx)}
-                  onDragOver={e => handleDragOver(e, idx)}
-                  onDragEnd={() => { dragSrcIdx.current = null; }}
-                  className="group flex items-center gap-2.5 rounded-lg px-2.5 py-2 transition-colors cursor-grab active:cursor-grabbing"
-                  style={{ backgroundColor: 'var(--color-input)' }}
-                >
-                  <GripVertical size={13} className="shrink-0 opacity-0 group-hover:opacity-30 transition-opacity" style={{ color: '#94a3b8' }} />
-                  <input
-                    type="checkbox"
-                    checked={task.done}
-                    onChange={() => toggleTask(task.id)}
-                    className="shrink-0 w-4 h-4 cursor-pointer accent-green-500"
-                  />
-                  <span
-                    className="flex-1 text-sm select-none"
-                    style={{
-                      color: task.done ? '#64748b' : 'var(--color-text)',
-                      textDecoration: task.done ? 'line-through' : 'none',
-                    }}
+              {/* Local tasks: interactive, draggable */}
+              {localTasks.map((task, idx) => {
+                const near = isNearDeadline(task.dueDate);
+                return (
+                  <div
+                    key={task.id}
+                    draggable
+                    onDragStart={() => handleDragStart(idx)}
+                    onDragOver={e => handleDragOver(e, idx)}
+                    onDragEnd={() => { dragSrcIdx.current = null; }}
+                    className="group flex items-start gap-2 rounded-lg px-2.5 py-2 transition-colors cursor-grab active:cursor-grabbing"
+                    style={{ backgroundColor: near && !task.done ? '#7f1d1d22' : 'var(--color-input)', border: near && !task.done ? '1px solid #ef444433' : '1px solid transparent' }}
                   >
-                    {task.text}
-                  </span>
-                  <button
-                    onClick={() => deleteTask(task.id)}
-                    className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity hover:text-red-400"
-                    style={{ color: '#64748b' }}
-                    title="Supprimer"
-                  >
-                    <Trash2 size={13} />
-                  </button>
-                </div>
-              ))}
+                    <GripVertical size={13} className="shrink-0 opacity-0 group-hover:opacity-30 transition-opacity mt-0.5" style={{ color: '#94a3b8' }} />
+                    {/* Custom checkbox: 20% opacity when unchecked */}
+                    <div
+                      onClick={() => toggleTask(task.id)}
+                      className="shrink-0 w-4 h-4 rounded cursor-pointer flex items-center justify-center mt-0.5 transition-all"
+                      style={{
+                        border: '1.5px solid #64748b',
+                        backgroundColor: task.done ? '#16a34a' : 'transparent',
+                        opacity: task.done ? 1 : 0.2,
+                      }}
+                    >
+                      {task.done && <Check size={9} style={{ color: 'white' }} />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <span
+                        className="text-sm select-none block"
+                        style={{
+                          color: near && !task.done ? '#fca5a5' : task.done ? '#64748b' : 'var(--color-text)',
+                          textDecoration: task.done ? 'line-through' : 'none',
+                        }}
+                      >
+                        {task.text}
+                      </span>
+                      {task.dueDate && (
+                        <span className="text-xs" style={{ color: near && !task.done ? '#ef4444' : '#64748b' }}>
+                          📅 {formatTaskDate(task.dueDate)}{near && !task.done ? ' — Bientôt !' : ''}
+                        </span>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => deleteTask(task.id)}
+                      className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity hover:text-red-400 mt-0.5"
+                      style={{ color: '#64748b' }}
+                      title="Supprimer"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                );
+              })}
 
-              {/* Separator if both lists have items */}
+              {/* Separator */}
               {localTasks.length > 0 && tasks.length > 0 && (
                 <div className="flex items-center gap-2 py-2">
                   <div className="flex-1 h-px" style={{ backgroundColor: 'var(--color-border)' }} />
-                  <span className="text-xs" style={{ color: '#475569' }}>Depuis l'agenda</span>
+                  <span className="text-xs" style={{ color: '#475569' }}>Agenda</span>
                   <div className="flex-1 h-px" style={{ backgroundColor: 'var(--color-border)' }} />
                 </div>
               )}
@@ -316,8 +351,8 @@ export function Dashboard() {
               {tasks.slice(0, 5).map(task => {
                 const urgent = task.priority === 'urgent' || task.priority === 'high';
                 return (
-                  <div key={task.id} className="flex items-start gap-2.5 rounded-lg px-2.5 py-2">
-                    <div className="w-4 h-4 rounded border mt-0.5 shrink-0" style={{ borderColor: urgent ? '#ef4444' : 'var(--color-input-border)' }} />
+                  <div key={task.id} className="flex items-start gap-2 rounded-lg px-2.5 py-2">
+                    <div className="w-4 h-4 rounded border mt-0.5 shrink-0" style={{ borderColor: urgent ? '#ef4444' : 'var(--color-input-border)', opacity: 0.2 }} />
                     <div className="min-w-0 flex-1">
                       <p className="text-sm text-slate-200">{task.title}</p>
                       <p className="text-xs mt-0.5 flex items-center gap-1" style={{ color: urgent ? '#ef4444' : '#64748b' }}>
@@ -331,6 +366,26 @@ export function Dashboard() {
             </div>
           )}
         </div>
+
+        {/* Col 3: Prochains examens */}
+        <div className="rounded-xl p-4" style={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)' }}>
+          <h2 className="text-sm font-semibold text-slate-200 mb-3">📅 Prochains examens</h2>
+          {loading ? (
+            <div className="space-y-3">{[1, 2, 3].map(i => <SkeletonLine key={i} />)}</div>
+          ) : exams.length === 0 ? (
+            <EmptyState icon="📖" text="Aucun examen — connectez votre ENT" />
+          ) : (
+            <div className="space-y-2">
+              {exams.map((exam, i) => (
+                <div key={i} className="flex items-center justify-between gap-2">
+                  <span className="text-sm text-slate-300 truncate">{exam.subject}</span>
+                  <span className="text-xs text-slate-500 shrink-0">{exam.date}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
       </div>
     </div>
   );
