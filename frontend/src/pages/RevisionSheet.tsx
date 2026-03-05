@@ -10,16 +10,23 @@ export function RevisionSheet() {
 
   useEffect(() => {
     try {
-      const stored = localStorage.getItem('revision_sheet');
-      if (stored) {
-        setHtml(stored);
+      const currentId = localStorage.getItem('revision_sheet_current_id');
+      localStorage.removeItem('revision_sheet_current_id');
+      if (currentId) {
+        const sheets = JSON.parse(localStorage.getItem('revision_sheets') ?? '[]');
+        const sheet = sheets.find((s: any) => s.id === currentId);
+        if (sheet) { setHtml(sheet.html); setName(sheet.name); return; }
+      }
+      // backward compat: old raw revision_sheet key
+      const legacy = localStorage.getItem('revision_sheet');
+      if (legacy) {
         localStorage.removeItem('revision_sheet');
-        const match = stored.match(/<h1[^>]*>([^<]+)<\/h1>/i);
+        const rawHtml = legacy.startsWith('{') ? (JSON.parse(legacy).html ?? legacy) : legacy;
+        setHtml(rawHtml);
+        const match = rawHtml.match(/<h1[^>]*>([^<]+)<\/h1>/i);
         if (match) setName(match[1].trim());
       }
-    } catch {
-      setHtml(null);
-    }
+    } catch { setHtml(null); }
   }, []);
 
   const handlePrint = () => {
@@ -63,10 +70,10 @@ export function RevisionSheet() {
         <p className="text-4xl">📄</p>
         <p className="text-slate-400 text-sm">Aucune fiche générée.</p>
         <button
-          onClick={() => navigate('/files')}
+          onClick={() => navigate('/revision')}
           className="text-sm text-blue-400 hover:text-blue-300 transition-colors"
         >
-          ← Aller dans Fichiers pour en générer une
+          ← Retour à la Révision
         </button>
       </div>
     );
@@ -80,11 +87,11 @@ export function RevisionSheet() {
         style={{ borderBottom: '1px solid var(--color-border)', backgroundColor: 'var(--color-card)' }}
       >
         <button
-          onClick={() => navigate('/files')}
+          onClick={() => navigate('/revision')}
           className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-white transition-colors"
         >
           <ArrowLeft size={15} />
-          Fichiers
+          Révision
         </button>
 
         <div className="w-px h-4 mx-1" style={{ backgroundColor: 'var(--color-border)' }} />

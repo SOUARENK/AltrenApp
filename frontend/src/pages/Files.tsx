@@ -148,10 +148,17 @@ export function Files() {
       const count = mode === 'summary' ? 15 : 10;
       const result = await generateRevision({ mode, filename: file.name, difficulty: 'medium', count });
       if (mode === 'summary') {
-        localStorage.setItem('revision_sheet', result.html ?? '');
+        const html = result.html ?? '';
+        const titleMatch = html.match(/<h1[^>]*>([^<]+)<\/h1>/i);
+        const sheetName = titleMatch ? titleMatch[1].trim() : file.name;
+        const sheet = { id: crypto.randomUUID(), name: sheetName, filename: file.name, html, createdAt: new Date().toISOString() };
+        const sheets = JSON.parse(localStorage.getItem('revision_sheets') ?? '[]');
+        sheets.unshift(sheet);
+        localStorage.setItem('revision_sheets', JSON.stringify(sheets));
+        localStorage.setItem('revision_sheet_current_id', sheet.id);
         navigate('/revision/sheet');
       } else {
-        localStorage.setItem('revision_generated', JSON.stringify(result));
+        localStorage.setItem('revision_generated', JSON.stringify({ ...result, filename: file.name }));
         navigate('/revision');
       }
     } catch (e: any) {
@@ -184,10 +191,18 @@ export function Files() {
         difficulty: 'medium', count,
       });
       if (mode === 'summary') {
-        localStorage.setItem('revision_sheet', result.html ?? '');
+        const html = result.html ?? '';
+        const titleMatch = html.match(/<h1[^>]*>([^<]+)<\/h1>/i);
+        const folderDisplayName = sub === '__other__' ? 'Non classé' : sub;
+        const sheetName = titleMatch ? titleMatch[1].trim() : folderDisplayName;
+        const sheet = { id: crypto.randomUUID(), name: sheetName, filename: folderDisplayName, html, createdAt: new Date().toISOString() };
+        const sheets = JSON.parse(localStorage.getItem('revision_sheets') ?? '[]');
+        sheets.unshift(sheet);
+        localStorage.setItem('revision_sheets', JSON.stringify(sheets));
+        localStorage.setItem('revision_sheet_current_id', sheet.id);
         navigate('/revision/sheet');
       } else {
-        localStorage.setItem('revision_generated', JSON.stringify(result));
+        localStorage.setItem('revision_generated', JSON.stringify({ ...result, filename: folderLabel }));
         navigate('/revision');
       }
     } catch (e: any) {
