@@ -6,23 +6,36 @@ import { useNavigate } from 'react-router-dom';
 
 const FILE_BASE_URL = (import.meta.env.VITE_API_URL ?? 'http://localhost:8001') + '/uploads';
 
-// ── Constantes thèmes ──────────────────────────────────────────────────────────
+// ── Thèmes ───────────────────────────────────────────────────────────────────
 
-const THEMES = [
-  { key: 'entreprise', label: 'Entreprise', icon: '🏭', color: '#2563eb', border: 'border-blue-500' },
-  { key: 'ecole',      label: 'École',       icon: '🎓', color: '#16a34a', border: 'border-green-500' },
-  { key: 'administratif', label: 'Administratif', icon: '📋', color: '#d97706', border: 'border-orange-500' },
-  { key: 'partage',    label: 'Partagé',     icon: '📊', color: '#7c3aed', border: 'border-purple-500' },
-] as const;
+export interface Theme {
+  key: string;
+  label: string;
+  icon: string;
+  color: string;
+}
 
-type ThemeKey = typeof THEMES[number]['key'];
+type ThemeKey = string;
 
-const DEFAULT_SUBFOLDERS: Record<ThemeKey, string[]> = {
+const DEFAULT_THEMES: Theme[] = [
+  { key: 'entreprise',    label: 'Entreprise',    icon: '🏭', color: '#2563eb' },
+  { key: 'ecole',         label: 'École',          icon: '🎓', color: '#16a34a' },
+  { key: 'administratif', label: 'Administratif',  icon: '📋', color: '#d97706' },
+  { key: 'partage',       label: 'Partagé',        icon: '📊', color: '#7c3aed' },
+];
+
+const DEFAULT_SUBFOLDERS: Record<string, string[]> = {
   entreprise:    ['Rapports', 'Projets', 'Réunions', 'Formation', 'Contrats'],
   ecole:         ['Cours', 'TD', 'Examens', 'Projets scolaires'],
   administratif: ['RH', 'Paie', 'Congés', 'Contrats'],
   partage:       ['Équipe', 'Clients', 'Partenaires'],
 };
+
+const PRESET_COLORS = [
+  '#2563eb', '#16a34a', '#d97706', '#7c3aed',
+  '#dc2626', '#0891b2', '#db2777', '#65a30d',
+  '#0f766e', '#9333ea', '#ca8a04', '#92400e',
+];
 
 interface IndexedFile  { name: string; chunks: number; theme: string; subfolder?: string | null; has_file?: boolean }
 interface MoveDialog   { filename: string; theme: ThemeKey; subfolder: string }
@@ -37,9 +50,16 @@ export function Files() {
   const [loading,         setLoading]         = useState(true);
   const [busyFile,        setBusyFile]        = useState<string | null>(null);
   const [moveDialog,      setMoveDialog]      = useState<MoveDialog | null>(null);
-  const [expandedThemes,  setExpandedThemes]  = useState<Set<string>>(new Set(THEMES.map(t => t.key)));
+  const [themes,          setThemes]          = useState<Theme[]>(() => {
+    try { const s = JSON.parse(localStorage.getItem('custom_themes') ?? 'null'); if (s?.length) return s; } catch {}
+    return DEFAULT_THEMES;
+  });
+  const [createThemeModal, setCreateThemeModal] = useState<{ name: string; color: string; icon: string } | null>(null);
+  const [expandedThemes,  setExpandedThemes]  = useState<Set<string>>(new Set(DEFAULT_THEMES.map(t => t.key)));
   const [expandedSubs,    setExpandedSubs]    = useState<Set<string>>(new Set());
-  const [customSubs,      setCustomSubs]      = useState<Record<string, string[]>>({});
+  const [customSubs,      setCustomSubs]      = useState<Record<string, string[]>>(() => {
+    try { return JSON.parse(localStorage.getItem('custom_subs') ?? '{}'); } catch { return {}; }
+  });
   const [addingSubFor,    setAddingSubFor]    = useState<string | null>(null);
   const [newSubName,      setNewSubName]      = useState('');
   const [searchQuery,     setSearchQuery]     = useState('');
@@ -75,6 +95,8 @@ export function Files() {
   };
 
   useEffect(() => { load(); }, []);
+  useEffect(() => { localStorage.setItem('custom_themes', JSON.stringify(themes)); }, [themes]);
+  useEffect(() => { localStorage.setItem('custom_subs', JSON.stringify(customSubs)); }, [customSubs]);
 
   // ── Actions ─────────────────────────────────────────────────────────────────
 
@@ -92,7 +114,7 @@ export function Files() {
   };
 
   const openMove = (file: IndexedFile) => {
-    const theme = (THEMES.find(t => t.key === file.theme) ? file.theme : 'entreprise') as ThemeKey;
+    const theme = (themes.find((t: Theme) => t.key === file.theme) ? file.theme : (themes[0]?.key ?? 'entreprise')) as ThemeKey;
     const allSubs = getAllSubs(theme);
     setMoveDialog({
       filename: file.name,
@@ -122,7 +144,32 @@ export function Files() {
 
   const openBulkMove = () => {
     if (selectedFiles.size === 0) return;
-    setBulkMove({ theme: 'entreprise', subfolder: DEFAULT_SUBFOLDERS.entreprise[0], moving: false, progress: 0 });
+    const firstTheme = themes[0]?.key ?? 'entreprise';
+    setBulkMove({ theme: firstTheme, subfolder: DEFAULT_SUBFOLDERS[firstTheme]?.[0] ?? '', moving: false, progress: 0 });
+  };
+
+  const handleCreateTheme = () => {
+    if (!createThemeModal) return;
+    const name = createThemeModal.name.trim();
+    if (!name) return;
+    const key = name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+    if (!key || themes.some((t: Theme) => t.key === key)) return;
+    const newTheme: Theme = { key, label: name, icon: createThemeModal.icon || '📁', color: createThemeModal.color };
+    setThemes(prev => [...prev, newTheme]);
+    setExpandedThemes(prev => new Set([...prev, key]));
+    setCreateThemeModal(null);
+  };
+
+  const handleDeleteTheme = async (themeKey: string) => {
+    const themeLabel = themes.find((t: Theme) => t.key === themeKey)?.label ?? themeKey;
+    const themeFiles = files.filter(f => f.theme === themeKey);
+    if (!confirm(`Supprimer le dossier « ${themeLabel} » et ses ${themeFiles.length} fichier(s) de la base ?`)) return;
+    for (const f of themeFiles) { try { await deleteDocument(f.name); } catch {} }
+    setFiles(prev => prev.filter(f => f.theme !== themeKey));
+    setThemes(prev => prev.filter((t: Theme) => t.key !== themeKey));
+    setCustomSubs(prev => { const n = { ...prev }; delete n[themeKey]; return n; });
+    setUploadMsg(`✅ Dossier « ${themeLabel} » supprimé`);
+    setTimeout(() => setUploadMsg(null), 4000);
   };
 
   const handleBulkMove = async () => {
@@ -380,11 +427,21 @@ export function Files() {
         {importDialog && (
           <ImportModal
             dialog={importDialog}
+            themes={themes}
             getAllSubs={getAllSubs}
-            onChangeTheme={theme => setImportDialog(prev => prev ? { ...prev, theme, subfolder: DEFAULT_SUBFOLDERS[theme][0] } : null)}
+            onChangeTheme={theme => setImportDialog(prev => prev ? { ...prev, theme, subfolder: DEFAULT_SUBFOLDERS[theme]?.[0] ?? '' } : null)}
             onChangeSubfolder={sub => setImportDialog(prev => prev ? { ...prev, subfolder: sub } : null)}
             onConfirm={handleImportConfirm}
             onCancel={() => setImportDialog(null)}
+          />
+        )}
+
+      {createThemeModal && (
+          <CreateThemeModal
+            value={createThemeModal}
+            onChange={setCreateThemeModal}
+            onConfirm={handleCreateTheme}
+            onCancel={() => setCreateThemeModal(null)}
           />
         )}
 
@@ -436,6 +493,14 @@ export function Files() {
           )}
 
           <button
+            onClick={() => setCreateThemeModal({ name: '', color: PRESET_COLORS[0], icon: '📁' })}
+            className="flex items-center gap-1.5 text-xs rounded-lg px-3 py-1.5 font-medium text-white transition-all"
+            style={{ backgroundColor: '#2563eb' }}
+          >
+            <Plus size={13} /> Nouveau dossier
+          </button>
+
+          <button
             onClick={load}
             disabled={loading}
             className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-300 transition-colors"
@@ -450,8 +515,9 @@ export function Files() {
           <BulkMoveModal
             state={bulkMove}
             count={selectedFiles.size}
+            themes={themes}
             getAllSubs={getAllSubs}
-            onChangeTheme={(t: ThemeKey) => setBulkMove(prev => prev ? { ...prev, theme: t, subfolder: DEFAULT_SUBFOLDERS[t][0] } : null)}
+            onChangeTheme={(t: ThemeKey) => setBulkMove(prev => prev ? { ...prev, theme: t, subfolder: DEFAULT_SUBFOLDERS[t]?.[0] ?? '' } : null)}
             onChangeSubfolder={(s: string) => setBulkMove(prev => prev ? { ...prev, subfolder: s } : null)}
             onConfirm={handleBulkMove}
             onCancel={() => setBulkMove(null)}
@@ -472,7 +538,7 @@ export function Files() {
           </div>
         ) : (
           <div className="space-y-3 max-w-3xl">
-            {THEMES.map(theme => {
+            {themes.map((theme: Theme) => {
               const themeFiles = files.filter(f => f.theme === theme.key);
               const allSubs = getAllSubs(theme.key);
               const isExpanded = expandedThemes.has(theme.key);
@@ -480,8 +546,8 @@ export function Files() {
               return (
                 <div
                   key={theme.key}
-                  className="rounded-2xl overflow-hidden border-l-4"
-                  style={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)', borderLeftColor: theme.color, borderLeftWidth: '4px' }}
+                  className="rounded-2xl overflow-hidden"
+                  style={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)', borderLeft: `4px solid ${theme.color}` }}
                 >
                   {/* En-tête thème */}
                   <div className="flex items-center gap-3 px-5 py-4">
@@ -498,9 +564,17 @@ export function Files() {
                     <button
                       onClick={e => startAddSub(theme.key, e)}
                       title="Ajouter un sous-dossier"
-                      className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-500 hover:text-slate-200 hover:bg-white/5 transition-colors text-lg shrink-0"
+                      className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-500 hover:text-slate-200 hover:bg-white/5 transition-colors shrink-0"
                     >
                       <Plus size={16} />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteTheme(theme.key)}
+                      title="Supprimer ce dossier"
+                      className="w-8 h-8 flex items-center justify-center rounded-lg transition-colors shrink-0 hover:bg-red-500/10"
+                      style={{ color: '#ef4444' }}
+                    >
+                      <Trash2 size={15} />
                     </button>
                   </div>
 
@@ -574,6 +648,7 @@ export function Files() {
                                 file={file}
                                 busy={busyFile === file.name}
                                 moveDialog={moveDialog}
+                                themes={themes}
                                 multiSelect={multiSelect}
                                 selected={selectedFiles.has(file.name)}
                                 isDragging={draggedFile === file.name}
@@ -635,6 +710,7 @@ export function Files() {
                                 file={file}
                                 busy={busyFile === file.name}
                                 moveDialog={moveDialog}
+                                themes={themes}
                                 multiSelect={multiSelect}
                                 selected={selectedFiles.has(file.name)}
                                 isDragging={draggedFile === file.name}
@@ -673,6 +749,7 @@ export function Files() {
 
 interface ImportModalProps {
   dialog: ImportDialog;
+  themes: Theme[];
   getAllSubs: (theme: string) => string[];
   onChangeTheme: (theme: ThemeKey) => void;
   onChangeSubfolder: (sub: string) => void;
@@ -680,8 +757,8 @@ interface ImportModalProps {
   onCancel: () => void;
 }
 
-function ImportModal({ dialog, getAllSubs, onChangeTheme, onChangeSubfolder, onConfirm, onCancel }: ImportModalProps) {
-  const theme = THEMES.find(t => t.key === dialog.theme)!;
+function ImportModal({ dialog, themes, getAllSubs, onChangeTheme, onChangeSubfolder, onConfirm, onCancel }: ImportModalProps) {
+  const theme = themes.find((t: Theme) => t.key === dialog.theme) ?? themes[0];
   const subs = getAllSubs(dialog.theme);
 
   return (
@@ -727,14 +804,14 @@ function ImportModal({ dialog, getAllSubs, onChangeTheme, onChangeSubfolder, onC
         <div className="space-y-1.5">
           <label className="text-xs font-medium text-slate-400">Thème</label>
           <div className="grid grid-cols-2 gap-2">
-            {THEMES.map(t => (
+            {themes.map((t: Theme) => (
               <button
                 key={t.key}
                 onClick={() => onChangeTheme(t.key)}
                 disabled={dialog.uploading}
                 className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium transition-all text-left disabled:opacity-50"
                 style={{
-                  backgroundColor: dialog.theme === t.key ? 'color-mix(in srgb, #2563eb 15%, var(--color-card))' : 'var(--color-input)',
+                  backgroundColor: dialog.theme === t.key ? `color-mix(in srgb, ${t.color} 15%, var(--color-card))` : 'var(--color-input)',
                   border: `2px solid ${dialog.theme === t.key ? t.color : 'var(--color-input-border)'}`,
                   color: dialog.theme === t.key ? 'white' : '#64748b',
                 }}
@@ -907,6 +984,7 @@ interface FileRowProps {
   file: IndexedFile;
   busy: boolean;
   moveDialog: MoveDialog | null;
+  themes: Theme[];
   multiSelect: boolean;
   selected: boolean;
   isDragging: boolean;
@@ -924,7 +1002,7 @@ interface FileRowProps {
 }
 
 
-function FileRow({ file, busy, moveDialog, multiSelect, selected, isDragging, onToggleSelect, onDelete, onOpenMove, onMove, onCancelMove, onChangeMoveTheme, onChangeMoveSubfolder, getAllSubs, onGenerateRevision, onDragStart, onDragEnd }: FileRowProps) {
+function FileRow({ file, busy, moveDialog, themes, multiSelect, selected, isDragging, onToggleSelect, onDelete, onOpenMove, onMove, onCancelMove, onChangeMoveTheme, onChangeMoveSubfolder, getAllSubs, onGenerateRevision, onDragStart, onDragEnd }: FileRowProps) {
   const isMoving = moveDialog?.filename === file.name;
 
   const menuItems: ContextMenuItem[] = [
@@ -986,7 +1064,7 @@ function FileRow({ file, busy, moveDialog, multiSelect, selected, isDragging, on
             className="w-full rounded-lg px-3 py-2 text-sm text-slate-200 outline-none"
             style={{ backgroundColor: 'var(--color-input)', border: '1px solid var(--color-input-border)' }}
           >
-            {THEMES.map(t => <option key={t.key} value={t.key}>{t.icon} {t.label}</option>)}
+            {themes.map((t: Theme) => <option key={t.key} value={t.key}>{t.icon} {t.label}</option>)}
           </select>
           <select
             value={moveDialog.subfolder}
@@ -1024,6 +1102,7 @@ function FileRow({ file, busy, moveDialog, multiSelect, selected, isDragging, on
 interface BulkMoveModalProps {
   state: BulkMoveState;
   count: number;
+  themes: Theme[];
   getAllSubs: (theme: string) => string[];
   onChangeTheme: (theme: ThemeKey) => void;
   onChangeSubfolder: (sub: string) => void;
@@ -1031,8 +1110,8 @@ interface BulkMoveModalProps {
   onCancel: () => void;
 }
 
-function BulkMoveModal({ state, count, getAllSubs, onChangeTheme, onChangeSubfolder, onConfirm, onCancel }: BulkMoveModalProps) {
-  const theme = THEMES.find(t => t.key === state.theme)!;
+function BulkMoveModal({ state, count, themes, getAllSubs, onChangeTheme, onChangeSubfolder, onConfirm, onCancel }: BulkMoveModalProps) {
+  const theme = themes.find((t: Theme) => t.key === state.theme) ?? themes[0];
   const subs  = getAllSubs(state.theme);
 
   return (
@@ -1056,14 +1135,14 @@ function BulkMoveModal({ state, count, getAllSubs, onChangeTheme, onChangeSubfol
         <div className="space-y-1.5">
           <label className="text-xs font-medium text-slate-400">Thème de destination</label>
           <div className="grid grid-cols-2 gap-2">
-            {THEMES.map(t => (
+            {themes.map((t: Theme) => (
               <button
                 key={t.key}
                 onClick={() => onChangeTheme(t.key)}
                 disabled={state.moving}
                 className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium transition-all text-left disabled:opacity-50"
                 style={{
-                  backgroundColor: state.theme === t.key ? 'color-mix(in srgb, #2563eb 15%, var(--color-card))' : 'var(--color-input)',
+                  backgroundColor: state.theme === t.key ? `color-mix(in srgb, ${t.color} 15%, var(--color-card))` : 'var(--color-input)',
                   border: `2px solid ${state.theme === t.key ? t.color : 'var(--color-input-border)'}`,
                   color: state.theme === t.key ? 'white' : '#64748b',
                 }}
@@ -1131,6 +1210,126 @@ function BulkMoveModal({ state, count, getAllSubs, onChangeTheme, onChangeSubfol
             </button>
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+// ── Modale création de dossier ────────────────────────────────────────────────
+
+const FOLDER_ICONS = ['📁', '🏭', '🎓', '📋', '📊', '🏠', '💼', '🔬', '🎨', '📐', '💡', '🗂️'];
+
+interface CreateThemeModalProps {
+  value: { name: string; color: string; icon: string };
+  onChange: (v: { name: string; color: string; icon: string }) => void;
+  onConfirm: () => void;
+  onCancel: () => void;
+}
+
+function CreateThemeModal({ value, onChange, onConfirm, onCancel }: CreateThemeModalProps) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ backgroundColor: 'rgba(0,0,0,0.75)' }}
+      onClick={e => { if (e.target === e.currentTarget) onCancel(); }}
+    >
+      <div
+        className="w-full max-w-sm rounded-2xl p-6 space-y-5 shadow-2xl"
+        style={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-input-border)' }}
+      >
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-semibold text-white">Nouveau dossier</h2>
+          <button onClick={onCancel} className="text-slate-500 hover:text-slate-300 transition-colors"><X size={18} /></button>
+        </div>
+
+        {/* Prévisualisation */}
+        <div
+          className="flex items-center gap-3 rounded-xl px-4 py-3"
+          style={{ borderLeft: `4px solid ${value.color}`, backgroundColor: 'var(--color-bg)' }}
+        >
+          <span className="text-2xl">{value.icon}</span>
+          <span className="font-semibold text-slate-200 text-sm">{value.name || 'Nom du dossier'}</span>
+        </div>
+
+        {/* Nom */}
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-slate-400">Nom</label>
+          <input
+            autoFocus
+            value={value.name}
+            onChange={e => onChange({ ...value, name: e.target.value })}
+            onKeyDown={e => { if (e.key === 'Enter') onConfirm(); if (e.key === 'Escape') onCancel(); }}
+            placeholder="Ex : Personnel, Recherche…"
+            className="w-full rounded-lg px-3 py-2.5 text-sm text-slate-200 outline-none placeholder:text-slate-600"
+            style={{ backgroundColor: 'var(--color-input)', border: '1px solid var(--color-input-border)' }}
+          />
+        </div>
+
+        {/* Icône */}
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-slate-400">Icône</label>
+          <div className="flex flex-wrap gap-2">
+            {FOLDER_ICONS.map(icon => (
+              <button
+                key={icon}
+                onClick={() => onChange({ ...value, icon })}
+                className="w-9 h-9 rounded-lg flex items-center justify-center text-lg transition-all"
+                style={{
+                  backgroundColor: value.icon === icon ? `${value.color}25` : 'var(--color-input)',
+                  border: `2px solid ${value.icon === icon ? value.color : 'var(--color-input-border)'}`,
+                }}
+              >
+                {icon}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Couleur */}
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-slate-400">Couleur</label>
+          <div className="flex flex-wrap gap-2">
+            {PRESET_COLORS.map(c => (
+              <button
+                key={c}
+                onClick={() => onChange({ ...value, color: c })}
+                className="w-7 h-7 rounded-full transition-all"
+                style={{
+                  backgroundColor: c,
+                  outline: value.color === c ? `3px solid ${c}` : 'none',
+                  outlineOffset: '2px',
+                  transform: value.color === c ? 'scale(1.15)' : 'scale(1)',
+                }}
+              />
+            ))}
+            <input
+              type="color"
+              value={value.color}
+              onChange={e => onChange({ ...value, color: e.target.value })}
+              className="w-7 h-7 rounded-full cursor-pointer border-0 bg-transparent"
+              title="Couleur personnalisée"
+            />
+          </div>
+        </div>
+
+        {/* Boutons */}
+        <div className="flex gap-3 pt-1">
+          <button
+            onClick={onCancel}
+            className="flex-1 rounded-xl py-2.5 text-sm text-slate-300 transition-colors"
+            style={{ backgroundColor: 'var(--color-input)', border: '1px solid var(--color-input-border)' }}
+          >
+            Annuler
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={!value.name.trim()}
+            className="flex-1 rounded-xl py-2.5 text-sm font-medium text-white transition-colors disabled:opacity-40"
+            style={{ backgroundColor: value.color }}
+          >
+            Créer le dossier
+          </button>
+        </div>
       </div>
     </div>
   );
