@@ -60,6 +60,9 @@ export function Files() {
   const [customSubs,      setCustomSubs]      = useState<Record<string, string[]>>(() => {
     try { return JSON.parse(localStorage.getItem('custom_subs') ?? '{}'); } catch { return {}; }
   });
+  const [deletedSubs,     setDeletedSubs]     = useState<Record<string, string[]>>(() => {
+    try { return JSON.parse(localStorage.getItem('deleted_subs') ?? '{}'); } catch { return {}; }
+  });
   const [addingSubFor,    setAddingSubFor]    = useState<string | null>(null);
   const [newSubName,      setNewSubName]      = useState('');
   const [searchQuery,     setSearchQuery]     = useState('');
@@ -97,6 +100,7 @@ export function Files() {
   useEffect(() => { load(); }, []);
   useEffect(() => { localStorage.setItem('custom_themes', JSON.stringify(themes)); }, [themes]);
   useEffect(() => { localStorage.setItem('custom_subs', JSON.stringify(customSubs)); }, [customSubs]);
+  useEffect(() => { localStorage.setItem('deleted_subs', JSON.stringify(deletedSubs)); }, [deletedSubs]);
 
   // ── Actions ─────────────────────────────────────────────────────────────────
 
@@ -242,6 +246,8 @@ export function Files() {
       try { await deleteDocument(f.name); ok++; } catch { }
     }
     setFiles(prev => prev.filter(f => !(f.theme === theme && f.subfolder === sub)));
+    setCustomSubs(prev => ({ ...prev, [theme]: (prev[theme] ?? []).filter(s => s !== sub) }));
+    setDeletedSubs(prev => ({ ...prev, [theme]: [...(prev[theme] ?? []), sub] }));
     setUploadMsg(`✅ Dossier « ${sub} » supprimé (${ok} fichier(s))`);
     setTimeout(() => setUploadMsg(null), 4000);
   };
@@ -319,10 +325,12 @@ export function Files() {
 
   // ── Sous-dossiers ────────────────────────────────────────────────────────────
 
-  const getAllSubs = (theme: string) => [
-    ...(DEFAULT_SUBFOLDERS[theme as ThemeKey] ?? []),
-    ...(customSubs[theme] ?? []),
-  ];
+  const getAllSubs = (theme: string) => {
+    const removed = new Set(deletedSubs[theme] ?? []);
+    const defaults = (DEFAULT_SUBFOLDERS[theme] ?? []).filter(s => !removed.has(s));
+    const custom   = (customSubs[theme] ?? []).filter(s => !removed.has(s));
+    return [...defaults, ...custom];
+  };
 
   const startAddSub = (theme: string, e: React.MouseEvent) => {
     e.stopPropagation();
