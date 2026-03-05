@@ -242,7 +242,7 @@ def sync_outlook_data() -> dict:
         pages = [{"page": i + 1, "text": event_to_text(e)} for i, e in enumerate(events)]
         chunks = chunk_pages(pages, filename=OUTLOOK_CAL_FILENAME)
         for c in chunks:
-            c["metadata"]["theme"] = "outlook_calendrier"
+            c["metadata"]["theme"] = "ecole"
         total_chunks += insert_chunks(chunks, generate_embeddings([c["content"] for c in chunks]))
 
     logger.info("Sync Outlook terminée : %d chunks.", total_chunks)
