@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { CheckCircle, XCircle, ChevronRight } from 'lucide-react';
 import type { QuizQuestion } from '../../types';
+import { incrementQuiz } from '../../utils/profileStats';
 
 interface QuizViewProps {
   questions: QuizQuestion[];
@@ -24,6 +25,7 @@ export function QuizView({ questions, onComplete }: QuizViewProps) {
   const handleNext = () => {
     if (current + 1 >= questions.length) {
       setFinished(true);
+      incrementQuiz();
       onComplete(score + (selected === question.correctIndex ? 0 : 0));
     } else {
       setCurrent(c => c + 1);

@@ -10,6 +10,7 @@ import { Revision } from './pages/Revision';
 import { RevisionSheet } from './pages/RevisionSheet';
 import { Settings } from './pages/Settings';
 import { MailPage } from './pages/Mail';
+import { Profile } from './pages/Profile';
 
 function AppRoutes() {
   return (
@@ -24,6 +25,7 @@ function AppRoutes() {
         <Route path="revision/sheet" element={<RevisionSheet />} />
         <Route path="settings" element={<Settings />} />
         <Route path="mail" element={<MailPage />} />
+        <Route path="profile" element={<Profile />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

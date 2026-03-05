@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Search, Upload, FolderOpen, Plus, Trash2, MoveRight, X, RefreshCw, CheckSquare, Square, Brain, BookOpen, ExternalLink, MoreVertical, FileText } from 'lucide-react';
 import { getDocumentList, deleteDocument, moveDocument, ingestFile, searchDocuments, generateRevision } from '../services/api';
+import { incrementSheet } from '../utils/profileStats';
 import { useNavigate } from 'react-router-dom';
 
 const FILE_BASE_URL = (import.meta.env.VITE_API_URL ?? 'http://localhost:8001') + '/uploads';
@@ -174,6 +175,7 @@ export function Files() {
         sheets.unshift(sheet);
         localStorage.setItem('revision_sheets', JSON.stringify(sheets));
         localStorage.setItem('revision_sheet_current_id', sheet.id);
+        incrementSheet();
         navigate('/revision/sheet');
       } else {
         localStorage.setItem('revision_generated', JSON.stringify({ ...result, filename: file.name }));
@@ -218,6 +220,7 @@ export function Files() {
         sheets.unshift(sheet);
         localStorage.setItem('revision_sheets', JSON.stringify(sheets));
         localStorage.setItem('revision_sheet_current_id', sheet.id);
+        incrementSheet();
         navigate('/revision/sheet');
       } else {
         localStorage.setItem('revision_generated', JSON.stringify({ ...result, filename: folderLabel }));

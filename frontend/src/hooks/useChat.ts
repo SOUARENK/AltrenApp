@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { sendQuestion, uploadPDF, getChatHistory, getConversation, deleteConversation } from '../services/api';
 import type { Message, Conversation, ChatMode, UploadResponse } from '../types';
 import type { Precision } from '../components/chat/ChatInput';
+import { incrementMsg } from '../utils/profileStats';
 
 export function useChat() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -24,6 +25,7 @@ export function useChat() {
     };
     setMessages(prev => [...prev, userMsg]);
     setIsLoading(true);
+    incrementMsg();
 
     try {
       const res = await sendQuestion(question, mode, conversationId, precision);

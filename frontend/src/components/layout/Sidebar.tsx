@@ -11,6 +11,7 @@ import {
   X,
   Settings,
   Mail,
+  User,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -21,6 +22,7 @@ const NAV_ITEMS = [
   { to: '/mail', icon: Mail, label: 'Mails' },
   { to: '/files', icon: FolderOpen, label: 'Fichiers' },
   { to: '/revision', icon: BookOpen, label: 'Révision' },
+  { to: '/profile', icon: User, label: 'Profil' },
   { to: '/settings', icon: Settings, label: 'Paramètres' },
 ];
 
