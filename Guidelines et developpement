@@ -1,0 +1,391 @@
+# 1. Objectif
+
+Ce document définit les standards de développement pour la Partie 1 (Backend).
+Tout code produit doit respecter ces règles. Ce document est la référence pour Claude Code.
+
+---
+
+# 2. Architecture & Structure
+
+Séparation stricte des responsabilités :
+
+* routes/     → Uniquement endpoints et validation d'entrée
+* services/   → Toute la logique métier
+* models/     → Schémas Pydantic et modèles de données
+* utils/      → Fonctions utilitaires transverses
+
+RÈGLES :
+* Jamais de logique métier dans les routes
+* Jamais d'appel Supabase direct dans les routes
+* Jamais d'appel LLM dans les routes
+* Un fichier = une responsabilité
+
+---
+
+# 3. Règles RAG Strictes
+
+* temperature = 0 sur TOUS les appels LLM, sans exception
+* top_p = 1
+* Le modèle répond UNIQUEMENT à partir du contexte fourni
+* Si aucun chunk pertinent : retourner le message de refus SANS appeler le LLM
+* Aucune hallucination tolérée
+
+Prompt système obligatoire (ne jamais le modifier sans validation équipe) :
+
+"Tu dois répondre uniquement à partir du contexte fourni ci-dessous.
+Si la réponse n'est pas dans le contexte, réponds exactement :
+'Je ne trouve pas l'information dans les documents fournis.'
+N'invente rien. Ne complète pas avec tes connaissances générales.
+Sois précis, factuel et concis."
+
+---
+
+# 4. Sécurité
+
+* Clés API exclusivement dans .env (JAMAIS dans le code)
+* .env dans .gitignore (OBLIGATOIRE)
+* service_role_key uniquement côté backend
+* Tokens OAuth chiffrés au repos (AES-256-GCM)
+* Validation Pydantic sur TOUTES les entrées
+* Cloisonnement par user_id sur TOUTES les requêtes SQL
+* Ne JAMAIS exposer les détails techniques des erreurs au client
+* Rate limiting : 60 req/min par utilisateur
+
+---
+
+# 5. Conventions de Code
+
+Nommage :
+* Fichiers : snake_case (rag_engine.py, llm_service.py)
+* Fonctions : snake_case (get_embedding, search_similar_chunks)
+* Classes : PascalCase (ChatRequest, BaseConnector)
+* Constantes : UPPER_SNAKE_CASE (SYSTEM_PROMPT, MAX_CHUNK_SIZE)
+
+Documentation :
+* Docstrings obligatoires sur toutes les fonctions publiques (format Google)
+* Type hints obligatoires sur toutes les signatures
+* Pas de print(), utiliser logging
+
+---
+
+# 6. Gestion des Erreurs
+
+* try/except avec des exceptions SPÉCIFIQUES (pas de bare except)
+* Codes HTTP sémantiques : 400, 401, 403, 404, 422, 500, 503
+* Logger toutes les erreurs avec contexte (user_id, endpoint, params)
+* Ne jamais retourner une stack trace au client
+
+---
+
+# 7. Base de Données
+
+* Requêtes via le client Supabase (pas de SQL brut dans le code Python)
+* Index ivfflat OBLIGATOIRE sur la colonne embedding
+* Metadata en JSONB
+* TIMESTAMPTZ pour les dates
+* TOUJOURS filtrer par user_id
+
+---
+
+# 8. Pipeline d'Ingestion PDF
+
+* Taille cible : 700 tokens par chunk
+* Overlap : 75 tokens
+* Max absolu : 800 tokens
+* Ne jamais couper en milieu de phrase
+* Utiliser tiktoken avec cl100k_base
+
+Metadata obligatoire par chunk :
+{
+    "content": "...",
+    "metadata": {
+        "filename": "cours_mecanique.pdf",
+        "page": 3,
+        "chunk_index": 7,
+        "ingested_at": "2026-03-03T11:30:00Z"
+    }
+}
+
+---
+
+# 9. Git & Collaboration
+
+* Branche principale : main (protégée)
+* Feature : feat/backend-xxx
+* Fix : fix/backend-xxx
+* Commits en français : "feat: ajouter l'authentification Microsoft OAuth"
+* Pull Requests obligatoires vers main
+* Ne JAMAIS commit sur main directement
+* Ne JAMAIS commit le .env
+
+---
+
+# 10. Communication avec les Autres Parties
+
+Avec Partie 2 (Frontend) :
+* Le contrat d'API est la source de vérité
+* Toute modification d'endpoint communiquée AVANT de merge
+* Swagger (/docs) = documentation vivante
+
+Avec Partie 3 (Connecteurs) :
+* BaseConnector définie conjointement
+* Types partagés dans shared/types.py
+* Les connecteurs reçoivent les tokens du backend
+
+---
+
+# 11. Variables d'Environnement (.env)
+
+ANTHROPIC_API_KEY=sk-ant-...
+OPENAI_API_KEY=sk-proj-...
+SUPABASE_URL=https://xxx.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=eyJ...
+AZURE_CLIENT_ID=...
+AZURE_CLIENT_SECRET=...
+AZURE_TENANT_ID=...
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+ENCRYPTION_KEY=...
+JWT_SECRET=...
+
+---
+
+# 12. Checklist Avant Chaque PR
+
+- [ ] Conventions de nommage respectées
+- [ ] Docstrings présentes
+- [ ] Type hints complets
+- [ ] Tests passent
+- [ ] Aucune clé API dans le code
+- [ ] .env pas dans le commit
+- [ ] Erreurs gérées proprement
+- [ ] Cloisonnement user_id respecté
+- [ ] Swagger cohérent
+- [ ] Pas de print(), uniquement logging
+
+---
+
+# Guidelines de Développement — Partie 2 : Frontend & Interface
+
+Version : 1.0 | Date : Mars 2026 | Statut : Actif
+
+---
+
+# 1. Stack & Conventions
+
+* React 18+ avec TypeScript strict
+* TailwindCSS uniquement (pas de CSS inline, CSS modules, styled-components)
+* Composants fonctionnels uniquement (pas de classes)
+* Hooks personnalisés pour la logique réutilisable
+
+---
+
+# 2. Structure des Fichiers
+
+pages/       → Un fichier par page (PascalCase : Chat.tsx)
+components/  → Composants réutilisables par domaine (PascalCase)
+services/    → Client API (camelCase : api.ts)
+types/       → Interfaces TypeScript (camelCase)
+hooks/       → Hooks personnalisés (camelCase avec use : useAuth.ts)
+contexts/    → React Contexts (PascalCase : AuthContext.tsx)
+
+---
+
+# 3. Communication avec le Backend
+
+RÈGLES ABSOLUES :
+* UNIQUEMENT via les endpoints REST du contrat d'API
+* JAMAIS d'accès direct à Supabase
+* JAMAIS d'appel vers OpenAI, Claude, ou Microsoft Graph
+* Toujours inclure Authorization: Bearer <token>
+
+Client API centralisé (services/api.ts) :
+* Wrapper fetch() avec token auto-injecté
+* Timeout 30s
+* Si 401 → redirect /login
+* Toutes les fonctions typées (sendQuestion, uploadPDF, getAgendaEvents...)
+
+---
+
+# 4. Gestion du State
+
+* AuthContext pour token + infos user
+* useState/useReducer pour le state local
+* PAS de localStorage pour les données sensibles
+* PAS de Redux
+
+---
+
+# 5. Types TypeScript (types/index.ts)
+
+interface Message { id, role, content, timestamp, sources? }
+interface Source { content, filename, page, similarity }
+interface ChatResponse { answer, sources }
+interface Event { id, title, start, end, source, location?, description? }
+interface Task { id, title, status, priority, project?, due_date?, url? }
+interface FileItem { id, name, path, size, modified_at, source, is_folder }
+
+---
+
+# 6. UI/UX
+
+* Dark mode par défaut
+* Couleurs : bg #0d0d0d, cards #141414, accent #2563eb, success #22c55e, error #ef4444
+* Chaque action async = loading state visible
+* Erreurs affichées dans l'UI (pas en console)
+* Messages en français
+* Transitions 0.2s ease
+
+---
+
+# 7. Gestion des Erreurs
+
+Pattern standard :
+const [isLoading, setIsLoading] = useState(false);
+const [error, setError] = useState<string | null>(null);
+try { ... } catch (err) { setError(err.message); } finally { setIsLoading(false); }
+
+Messages :
+* Réseau : "Connexion impossible au serveur"
+* 401 : redirect silencieux vers /login
+* 503 : "Service temporairement indisponible"
+* Timeout : "Délai de réponse dépassé"
+
+---
+
+# 8. Git
+
+* Branches : feat/frontend-xxx, fix/frontend-xxx
+* PR vers main
+* Commits en français : "feat: ajouter l'interface chat"
+* Jamais commit de clés/tokens
+
+---
+
+# 9. Checklist Avant Chaque PR
+
+- [ ] TypeScript compile sans erreur (npm run build)
+- [ ] Pas de console.log()
+- [ ] Pas de any dans les types
+- [ ] Testé sur mobile (375px) et desktop (1440px)
+- [ ] Loading states présents
+- [ ] Erreurs gérées
+- [ ] Aucun token dans le code
+- [ ] Styling TailwindCSS uniquement
+
+---
+
+# Guidelines de Développement — Partie 3 : Intégrations & Connecteurs
+
+Version : 1.0 | Date : Mars 2026 | Statut : Actif
+
+---
+
+# 1. Règle d'Or
+
+Chaque connecteur est un module Python INDÉPENDANT.
+Il implémente BaseConnector et rien d'autre.
+
+Un connecteur NE FAIT PAS :
+* D'authentification OAuth (géré par le backend)
+* D'appel au LLM ou aux embeddings
+* D'écriture dans Supabase
+* D'appel à un autre connecteur
+
+Un connecteur FAIT :
+* Recevoir des tokens du backend
+* Appeler une API externe
+* Parser les réponses
+* Retourner des types standardisés
+* Gérer ses propres erreurs
+
+---
+
+# 2. Gestion des Tokens
+
+* Tokens fournis par le backend via authenticate()
+* Le connecteur NE gère PAS l'OAuth
+* Token expiré → retourner ConnectorStatus.AUTH_EXPIRED
+* Ne JAMAIS stocker les tokens dans un fichier
+
+---
+
+# 3. Gestion des Erreurs
+
+* Ne JAMAIS faire crasher l'orchestrateur
+* Toujours retourner une liste vide plutôt qu'une exception
+* Logger avec contexte : connector_name, endpoint, error
+* Mettre à jour self._status
+
+Pattern :
+try:
+    response = requests.get(url, headers=..., timeout=10)
+    if response.status_code == 401: return [] + status AUTH_EXPIRED
+    if response.status_code == 429: raise pour retry
+    response.raise_for_status()
+    return parse(response.json())
+except Timeout: return [] + status UNAVAILABLE
+except Exception: return [] + status UNAVAILABLE
+
+---
+
+# 4. Retry Exponentiel (tenacity)
+
+@retry(stop=stop_after_attempt(3), wait=wait_exponential(min=1, max=10))
+
+Retrier : 429, timeout, ConnectionError
+Ne PAS retrier : 401, 403, 404
+
+---
+
+# 5. Rate Limiting
+
+* Microsoft Graph : 10 000 req / 10 min
+* Jira : 100 req / min
+* Google Calendar : 100 req / 100s
+* ENT LISE : 1 req/sec max
+
+---
+
+# 6. Tests
+
+* pytest + responses pour mocker HTTP
+* Cas : succès, 401, 500, 429, timeout, parsing échoué
+* Chaque connecteur a ses tests dans connectors/tests/
+
+---
+
+# 7. Scraping ENT — Règles Spéciales
+
+* Playwright (préféré à Selenium)
+* Sélecteurs CSS robustes
+* Logger HTML brut en cas d'erreur
+* Tester régulièrement que le scraping fonctionne
+* Ne JAMAIS stocker les identifiants en clair
+
+---
+
+# 8. Git
+
+* Branches : feat/connector-xxx
+* Un connecteur = une branche = une PR
+* Commits français : "feat: ajouter le connecteur Teams"
+* Jamais de tokens/clés dans le code
+
+---
+
+# 9. Communication
+
+* BaseConnector définie avec le backend
+* Types partagés dans shared/types.py
+* Les données passent : Connecteur → Backend → Frontend
+
+---
+
+# 10. Checklist Avant Chaque PR
+
+- [ ] BaseConnector implémentée complètement
+- [ ] Tests unitaires présents et passent
+- [ ] Erreurs gérées sans crash
+- [ ] Aucun token/clé dans le code
+- [ ] README du connecteur à jour

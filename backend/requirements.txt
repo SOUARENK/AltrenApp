@@ -1,0 +1,40 @@
+# AlternApp Backend — installer avec : pip install -r requirements.txt
+
+# Framework web
+fastapi==0.115.6
+uvicorn==0.34.0
+python-multipart==0.0.20
+
+# OpenAI (LLM gpt-4o-mini + Embeddings text-embedding-3-small)
+openai>=1.0.0
+
+# Extraction de texte
+pypdf>=4.0.0
+python-docx>=1.1.0
+python-pptx>=1.0.0
+
+# OCR images (Tesseract doit être installé séparément — optionnel)
+pytesseract>=0.3.10
+Pillow>=10.0.0
+
+# Comptage de tokens
+tiktoken>=0.7.0
+
+# Variables d'environnement
+python-dotenv==1.0.1
+
+# Validation des données
+pydantic>=2.0.0
+
+# Supabase (PostgreSQL + pgvector)
+supabase==2.11.0
+
+# Auth Microsoft OAuth (Outlook/Teams/OneDrive)
+msal>=1.28.0
+httpx>=0.27.0
+
+# JWT session tokens
+PyJWT>=2.8.0
+
+# Chiffrement tokens OAuth
+cryptography>=42.0.0

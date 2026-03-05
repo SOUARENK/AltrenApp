@@ -1,0 +1,48 @@
+# ── Environnements Python ─────────────────────────────────────────────────────
+backend/.venv/
+backend/venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+.Python
+
+# ── Variables d'environnement (SECRETS - NE JAMAIS COMMIT) ────────────────────
+.env
+.env.local
+.env.*.local
+backend/.env
+frontend/.env
+frontend/.env.local
+
+# ── Fichiers de configuration sensibles (clés API, credentials) ──────────────
+info.md
+*.credentials.md
+
+# ── Node.js / Frontend ────────────────────────────────────────────────────────
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ── Uploads (fichiers utilisateurs, potentiellement volumineux) ───────────────
+backend/uploads/
+
+# ── Éditeurs / OS ─────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Logs et bases de données locales ─────────────────────────────────────────
+*.log
+*.sqlite
+*.db
