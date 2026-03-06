@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { getDashboardSummary, getDashboardTasks } from '../services/api';
+import { getDashboardSummary, getDashboardTasks, getOutlookStatus } from '../services/api';
 import type { DashboardData, Task } from '../types';
 import {
   MessageSquare, Calendar, FolderOpen, BookOpen,
@@ -59,6 +59,7 @@ export function Dashboard() {
   const navigate = useNavigate();
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Bonjour' : hour < 18 ? 'Bon après-midi' : 'Bonsoir';
+  const [outlookName, setOutlookName] = useState<string>('');
 
   const [summary, setSummary] = useState<DashboardData | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -75,6 +76,10 @@ export function Dashboard() {
   useEffect(() => {
     localStorage.setItem('dashboard_tasks', JSON.stringify(localTasks));
   }, [localTasks]);
+
+  useEffect(() => {
+    getOutlookStatus().then(s => { if (s.connected && s.name) setOutlookName(s.name.split(' ')[0]); });
+  }, []);
 
   const addTask = () => {
     if (!newTaskText.trim()) return;
@@ -145,7 +150,7 @@ export function Dashboard() {
         <div>
           <p className="text-xs text-slate-500 capitalize">{TODAY}</p>
           <h1 className="text-2xl font-semibold text-white mt-0.5">
-            {greeting}, {user?.name?.split(' ')[0]} 👋
+            {greeting}, {outlookName || user?.name?.split(' ')[0]} 👋
           </h1>
         </div>
         <div className="flex items-center gap-1.5 mt-1">

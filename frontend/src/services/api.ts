@@ -319,6 +319,7 @@ export async function searchDocuments(query: string): Promise<SearchResult[]> {
 export interface OutlookStatus {
   connected: boolean;
   email?: string;
+  name?: string;
   last_sync?: string;
 }
 

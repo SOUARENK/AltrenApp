@@ -63,7 +63,7 @@ def exchange_code_for_tokens(code: str) -> dict:
     return result
 
 
-def save_tokens(access_token: str, refresh_token: str | None, expires_in: int, email: str) -> None:
+def save_tokens(access_token: str, refresh_token: str | None, expires_in: int, email: str, name: str = "") -> None:
     client = _get_supabase()
     expires_at = (datetime.now(timezone.utc) + timedelta(seconds=expires_in)).isoformat()
     existing = client.table("oauth_tokens").select("id").eq("provider", "microsoft").execute()
@@ -73,6 +73,7 @@ def save_tokens(access_token: str, refresh_token: str | None, expires_in: int, e
         "refresh_token": refresh_token,
         "expires_at": expires_at,
         "email": email,
+        "name": name,
         "updated_at": datetime.now(timezone.utc).isoformat(),
     }
     if existing.data:
@@ -107,7 +108,7 @@ def get_valid_token() -> str:
 def get_outlook_status() -> dict:
     try:
         client = _get_supabase()
-        result = client.table("oauth_tokens").select("email, updated_at").eq("provider", "microsoft").execute()
+        result = client.table("oauth_tokens").select("email, name, updated_at").eq("provider", "microsoft").execute()
         if not result.data:
             return {"connected": False}
         row = result.data[0]
@@ -115,7 +116,7 @@ def get_outlook_status() -> dict:
         if "alternapp.local" in email or email.startswith("dev"):
             client.table("oauth_tokens").delete().eq("provider", "microsoft").execute()
             return {"connected": False}
-        return {"connected": True, "email": email, "last_sync": row.get("updated_at")}
+        return {"connected": True, "email": email, "name": row.get("name", ""), "last_sync": row.get("updated_at")}
     except Exception:
         return {"connected": False}
 

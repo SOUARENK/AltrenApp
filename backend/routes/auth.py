@@ -73,6 +73,7 @@ async def microsoft_callback(code: str | None = None, error: str | None = None):
             refresh_token=tokens.get("refresh_token"),
             expires_in=tokens.get("expires_in", 3600),
             email=user_info["email"],
+            name=user_info.get("name", ""),
         )
         # Générer un token de session simple (JWT en production)
         session_token = f"ms-{tokens['access_token'][:20]}"
