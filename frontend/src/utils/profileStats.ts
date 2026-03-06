@@ -1,8 +1,9 @@
 // ── Clés localStorage ─────────────────────────────────────────────────────────
-const KEY_JOIN_DATE   = 'profile_join_date';
-const KEY_QUIZ_COUNT  = 'profile_quiz_count';
-const KEY_SHEET_COUNT = 'profile_sheet_count';
-const KEY_MSG_COUNT   = 'profile_message_count';
+const KEY_JOIN_DATE      = 'profile_join_date';
+const KEY_QUIZ_COUNT     = 'profile_quiz_count';
+const KEY_SHEET_COUNT    = 'profile_sheet_count';
+const KEY_MSG_COUNT      = 'profile_message_count';
+const KEY_QUIZ_TOTAL_PCT = 'profile_quiz_total_pct';
 
 // ── Join date ─────────────────────────────────────────────────────────────────
 
@@ -41,6 +42,18 @@ export const getMsgCount   = () => getCount(KEY_MSG_COUNT);
 export const incrementQuiz  = () => increment(KEY_QUIZ_COUNT);
 export const incrementSheet = () => increment(KEY_SHEET_COUNT);
 export const incrementMsg   = () => increment(KEY_MSG_COUNT);
+
+export function saveQuizScore(pct: number): void {
+  const current = parseFloat(localStorage.getItem(KEY_QUIZ_TOTAL_PCT) ?? '0');
+  localStorage.setItem(KEY_QUIZ_TOTAL_PCT, String(current + pct));
+}
+
+export function getQuizAvg(): number | null {
+  const count = getCount(KEY_QUIZ_COUNT);
+  if (count === 0) return null;
+  const total = parseFloat(localStorage.getItem(KEY_QUIZ_TOTAL_PCT) ?? '0');
+  return Math.round(total / count);
+}
 
 // ── Médailles ─────────────────────────────────────────────────────────────────
 

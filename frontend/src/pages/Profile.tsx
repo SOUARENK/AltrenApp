@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { getMedals, ensureJoinDate, formatDuration, nextThreshold, prevThreshold } from '../utils/profileStats';
+import { getMedals, ensureJoinDate, formatDuration, nextThreshold, prevThreshold, getQuizAvg } from '../utils/profileStats';
 import type { MedalInfo, MedalTier } from '../utils/profileStats';
 
 // ── Couleurs et styles par palier ─────────────────────────────────────────────
@@ -197,11 +197,14 @@ export function Profile() {
   const { user } = useAuth();
   const [medals, setMedals]     = useState<MedalInfo[]>([]);
   const [joinDate, setJoinDate] = useState('');
+  const [quizAvg,  setQuizAvg]  = useState<number | null>(null);
+  const [hoverQcm, setHoverQcm] = useState(false);
 
   useEffect(() => {
     const d = ensureJoinDate();
     setJoinDate(d);
     setMedals(getMedals());
+    setQuizAvg(getQuizAvg());
   }, []);
 
   const duration = joinDate ? formatDuration(joinDate) : '';
@@ -259,21 +262,46 @@ export function Profile() {
           <div>
             <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wide mb-3">Statistiques</h2>
             <div className="grid grid-cols-3 gap-3">
-              {[
-                { label: 'QCM réalisés',    value: totalQuiz,  icon: '📝', color: '#2563eb' },
-                { label: 'Fiches générées', value: totalSheet, icon: '📚', color: '#16a34a' },
-                { label: 'Messages chat',   value: totalMsg,   icon: '💬', color: '#7c3aed' },
-              ].map(s => (
-                <div
-                  key={s.label}
-                  className="rounded-xl p-4 text-center"
-                  style={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)' }}
-                >
-                  <p className="text-2xl mb-1">{s.icon}</p>
-                  <p className="text-2xl font-bold" style={{ color: s.color }}>{s.value}</p>
-                  <p className="text-xs text-slate-500 mt-0.5">{s.label}</p>
-                </div>
-              ))}
+              {/* QCM réalisés — avec tooltip moyenne */}
+              <div
+                className="rounded-xl p-4 text-center relative cursor-default"
+                style={{ backgroundColor: 'var(--color-card)', border: `1px solid ${hoverQcm ? '#2563eb' : 'var(--color-border)'}`, transition: 'border-color 0.15s' }}
+                onMouseEnter={() => setHoverQcm(true)}
+                onMouseLeave={() => setHoverQcm(false)}
+              >
+                <p className="text-2xl mb-1">📝</p>
+                <p className="text-2xl font-bold" style={{ color: '#2563eb' }}>{totalQuiz}</p>
+                <p className="text-xs text-slate-500 mt-0.5">QCM réalisés</p>
+                {hoverQcm && (
+                  <div
+                    className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 z-10 rounded-lg px-3 py-2 text-xs font-medium whitespace-nowrap shadow-lg"
+                    style={{ backgroundColor: '#1e293b', border: '1px solid #2563eb', color: '#93c5fd' }}
+                  >
+                    {quizAvg !== null ? `Moyenne : ${quizAvg}%` : 'Aucun score enregistré'}
+                    <div className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0" style={{ borderLeft: '5px solid transparent', borderRight: '5px solid transparent', borderTop: '5px solid #2563eb' }} />
+                  </div>
+                )}
+              </div>
+
+              {/* Fiches générées */}
+              <div
+                className="rounded-xl p-4 text-center"
+                style={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)' }}
+              >
+                <p className="text-2xl mb-1">📚</p>
+                <p className="text-2xl font-bold" style={{ color: '#16a34a' }}>{totalSheet}</p>
+                <p className="text-xs text-slate-500 mt-0.5">Fiches générées</p>
+              </div>
+
+              {/* Messages chat */}
+              <div
+                className="rounded-xl p-4 text-center"
+                style={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)' }}
+              >
+                <p className="text-2xl mb-1">💬</p>
+                <p className="text-2xl font-bold" style={{ color: '#7c3aed' }}>{totalMsg}</p>
+                <p className="text-xs text-slate-500 mt-0.5">Messages chat</p>
+              </div>
             </div>
           </div>
 
