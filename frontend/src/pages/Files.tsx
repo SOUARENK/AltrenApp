@@ -152,6 +152,19 @@ export function Files() {
     setBulkMove({ theme: firstTheme, subfolder: DEFAULT_SUBFOLDERS[firstTheme]?.[0] ?? '', moving: false, progress: 0 });
   };
 
+  const handleBulkDelete = async () => {
+    const names = Array.from(selectedFiles);
+    if (!confirm(`Supprimer ${names.length} fichier(s) de la base ?`)) return;
+    let ok = 0;
+    for (const name of names) {
+      try { await deleteDocument(name); ok++; } catch {}
+    }
+    setFiles(prev => prev.filter(f => !selectedFiles.has(f.name)));
+    exitMultiSelect();
+    setUploadMsg(`✅ ${ok} fichier(s) supprimé(s)`);
+    setTimeout(() => setUploadMsg(null), 4000);
+  };
+
   const handleCreateTheme = () => {
     if (!createThemeModal) return;
     const name = createThemeModal.name.trim();
@@ -488,16 +501,26 @@ export function Files() {
             {multiSelect ? 'Désélectionner' : 'Sélectionner plusieurs'}
           </button>
 
-          {/* Bouton déplacer la sélection */}
+          {/* Boutons sélection multiple */}
           {multiSelect && selectedFiles.size > 0 && (
-            <button
-              onClick={openBulkMove}
-              className="flex items-center gap-1.5 text-xs rounded-lg px-3 py-1.5 font-medium text-white transition-all"
-              style={{ backgroundColor: '#2563eb' }}
-            >
-              <MoveRight size={13} />
-              Changer de dossier
-            </button>
+            <>
+              <button
+                onClick={openBulkMove}
+                className="flex items-center gap-1.5 text-xs rounded-lg px-3 py-1.5 font-medium text-white transition-all"
+                style={{ backgroundColor: '#2563eb' }}
+              >
+                <MoveRight size={13} />
+                Changer de dossier
+              </button>
+              <button
+                onClick={handleBulkDelete}
+                className="flex items-center gap-1.5 text-xs rounded-lg px-3 py-1.5 font-medium text-white transition-all"
+                style={{ backgroundColor: '#ef4444' }}
+              >
+                <Trash2 size={13} />
+                Supprimer
+              </button>
+            </>
           )}
 
           <button
