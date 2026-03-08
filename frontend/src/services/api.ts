@@ -12,7 +12,7 @@ import type {
   ChatMode,
 } from '../types';
 
-const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8001';
+const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000';
 const TIMEOUT_MS = 30_000;
 
 let _token: string | null = null;

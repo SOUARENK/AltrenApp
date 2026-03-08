@@ -59,11 +59,12 @@ app = FastAPI(
 # ── CORS ─────────────────────────────────────────────────────────────────────
 
 _cors_origins_env = os.getenv("CORS_ALLOWED_ORIGINS", "")
-_cors_origins = (
-    [o.strip() for o in _cors_origins_env.split(",") if o.strip()]
-    if _cors_origins_env
-    else ["http://localhost:5173", "http://localhost:5174", "http://localhost:3000"]
-)
+_cors_from_env = [o.strip() for o in _cors_origins_env.split(",") if o.strip()]
+_cors_origins = list(set(_cors_from_env + [
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "http://localhost:3000",
+]))
 
 app.add_middleware(
     CORSMiddleware,
@@ -71,7 +72,7 @@ app.add_middleware(
     allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["GET", "POST", "DELETE", "PATCH", "PUT", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization", "Accept"],
+    allow_headers=["Content-Type", "Authorization", "Accept", "X-Requested-With"],
 )
 
 # ── Routes ───────────────────────────────────────────────────────────────────

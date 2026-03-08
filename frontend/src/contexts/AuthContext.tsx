@@ -1,6 +1,8 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 import { getMe, setToken, logout as apiLogout } from '../services/api';
 import type { User } from '../types';
+
+const STORAGE_KEY = 'alternapp_token';
 
 interface AuthContextValue {
   user: User | null;
@@ -14,60 +16,58 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-const DEV_TOKEN = 'dev-token';
-const DEV_USER: User = { id: 'dev-user-001', name: 'Développeur AlternApp', email: 'dev@alternapp.local' };
-
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(DEV_USER);
-  const [token, setTokenState] = useState<string | null>(DEV_TOKEN);
+  const [user, setUser] = useState<User | null>(null);
+  const [token, setTokenState] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Synchronise le token de démarrage dans le module api.ts
-  setToken(DEV_TOKEN);
+  // Au chargement : restaure la session depuis localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (!saved) {
+      setIsLoading(false);
+      return;
+    }
+    setToken(saved);
+    getMe()
+      .then((me) => {
+        setTokenState(saved);
+        setUser(me);
+      })
+      .catch(() => {
+        localStorage.removeItem(STORAGE_KEY);
+        setToken(null);
+      })
+      .finally(() => setIsLoading(false));
+  }, []);
 
-  /**
-   * Valide le token en appelant GET /auth/me.
-   * Rejette si le serveur renvoie une erreur (le appelant peut catch).
-   */
   const setAuthToken = useCallback(async (newToken: string) => {
     setToken(newToken);
+    const me = await getMe();
     setTokenState(newToken);
-    try {
-      const me = await getMe();
-      setUser(me);
-    } catch (err) {
-      setToken(null);
-      setTokenState(null);
-      setUser(null);
-      throw err;
-    }
+    setUser(me);
+    localStorage.setItem(STORAGE_KEY, newToken);
   }, []);
 
   const loginDev = useCallback(() => {
+    const devToken = 'dev-token';
+    setToken(devToken);
+    setTokenState(devToken);
     setUser({ id: 'dev', name: 'Dev User', email: 'dev@alternapp.local' });
-    setTokenState('dev-token');
+    localStorage.setItem(STORAGE_KEY, devToken);
   }, []);
 
   const logout = useCallback(async () => {
-    try {
-      await apiLogout();
-    } catch {
-      setToken(null);
-    }
+    try { await apiLogout(); } catch { /* ignore */ }
+    setToken(null);
     setTokenState(null);
     setUser(null);
+    localStorage.removeItem(STORAGE_KEY);
   }, []);
 
   return (
     <AuthContext.Provider
-      value={{
-        user,
-        token,
-        isLoading: false,
-        isAuthenticated: !!user,
-        setAuthToken,
-        loginDev,
-        logout,
-      }}
+      value={{ user, token, isLoading, isAuthenticated: !!user, setAuthToken, loginDev, logout }}
     >
       {children}
     </AuthContext.Provider>

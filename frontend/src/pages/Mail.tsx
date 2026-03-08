@@ -370,7 +370,7 @@ export function MailPage() {
   const unread = emails.filter(e => !e.is_read).length;
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden">
+    <div className="flex flex-col h-full overflow-hidden">
       {/* Header */}
       <div
         className="px-6 py-4 flex items-center justify-between shrink-0"

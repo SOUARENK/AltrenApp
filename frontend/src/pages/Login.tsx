@@ -8,6 +8,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   token_missing: 'Token manquant dans la réponse du serveur.',
   auth_failed: 'Échec de l\'authentification. Réessayez.',
   access_denied: 'Accès refusé. Vérifiez vos droits.',
+  oauth_redirect_failed: 'Impossible de contacter le serveur. Vérifiez que le backend est lancé.',
 };
 
 export function Login() {
@@ -33,10 +34,11 @@ export function Login() {
     setLoadingProvider(provider);
     try {
       const { url } = await fetcher();
+      if (!url) throw new Error('URL manquante');
       window.location.href = url;
     } catch {
-      const base = import.meta.env.VITE_API_URL ?? 'http://localhost:8000';
-      window.location.href = `${base}/auth/${provider}`;
+      setLoadingProvider(null);
+      navigate(`/login?error=oauth_redirect_failed`);
     }
   };
 

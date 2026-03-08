@@ -152,24 +152,51 @@ Question : {question_utilisateur}
 
 # 5. Authentification — Flow OAuth 2.0
 
-1. Frontend → GET /auth/login/microsoft → Backend génère l'URL Azure AD
-2. Redirect → Azure AD login page
+## Microsoft
+1. Frontend → POST /auth/login/microsoft → Backend génère l'URL Azure AD (via MSAL)
+2. Redirect → Page de login Azure AD
 3. Azure AD → Redirect vers /auth/callback/microsoft?code=...
-4. Backend échange le code contre access_token + refresh_token
-5. Backend chiffre et stocke les tokens dans users
-6. Backend génère un JWT session → retourne au frontend
-7. Frontend inclut JWT dans tous les headers : Authorization: Bearer <jwt>
+4. Backend échange le code contre access_token + refresh_token (via MSAL)
+5. Backend stocke les tokens dans oauth_tokens (Supabase), provider="microsoft"
+6. Backend génère un token de session opaque (secrets.token_urlsafe(32))
+7. Session stockée en mémoire : token → {provider, email, name}
+8. Redirect vers frontend/auth/callback?token=<session_token>
+9. Frontend stocke le token et l'inclut dans : Authorization: Bearer <session_token>
+
+## Google
+1. Frontend → POST /auth/login/google → Backend génère l'URL Google OAuth2
+2. Redirect → Page de login Google
+3. Google → Redirect vers /auth/callback/google?code=...
+4. Backend échange le code (POST https://oauth2.googleapis.com/token)
+5. Backend récupère les infos user (GET https://www.googleapis.com/oauth2/v3/userinfo)
+6. Backend stocke les tokens dans oauth_tokens, provider="google"
+7. Session opaque générée et stockée en mémoire
+8. Redirect vers frontend/auth/callback?token=<session_token>
+
+## Validation (/auth/me)
+- Token "dev-*" → retourne DEV_USER (mode développement sans backend)
+- Token connu en session + provider=google → retourne infos de session
+- Token connu en session + provider=microsoft → appel frais à Microsoft Graph /me
+- Token inconnu mais Outlook connecté → fallback sur Graph API
+- Sinon → retourne DEV_USER
+
+## Déconnexion (/auth/logout)
+- Invalidation du token dans le store de sessions en mémoire
+
+Note : le store de sessions est un dict Python en mémoire. Les sessions sont perdues
+au redémarrage du serveur (acceptable en dev/demo). En production → Redis ou table Supabase.
 
 ---
 
 # 6. Sécurité
 
 * HTTPS (TLS 1.3) en transit
-* Tokens chiffrés AES-256-GCM au repos
-* JWT signé HS256, expiration 24h
-* CORS : origines frontend uniquement
-* Rate limiting : 60 req/min
-* user_id sur CHAQUE requête SQL
+* Tokens OAuth stockés dans Supabase (oauth_tokens) — à chiffrer en production
+* Session token : opaque, 43 caractères aléatoires (secrets.token_urlsafe(32))
+* Ne contient aucune donnée dérivée des tokens OAuth
+* CORS : origines frontend uniquement (configurables via CORS_ALLOWED_ORIGINS)
+* Scopes OAuth encodés correctement dans les URLs (urllib.parse.quote)
+* Refresh automatique des tokens Microsoft (via MSAL) à l'expiration
 
 ---
 
@@ -201,27 +228,42 @@ Utilisateur → React Components → hooks → services/api.ts → fetch() → B
 
 # 2. Routes
 
-| Route | Page | Protégée |
-|---|---|---|
-| /login | Login.tsx | Non |
-| / | Dashboard.tsx | Oui |
-| /chat | Chat.tsx | Oui |
-| /chat/:id | Chat.tsx | Oui |
-| /agenda | Agenda.tsx | Oui |
-| /files | Files.tsx | Oui |
-| /revision | Revision.tsx | Oui |
+| Route | Page | Dans Layout | Notes |
+|---|---|---|---|
+| /login | Login.tsx | Non | Page de connexion OAuth |
+| /auth/callback | AuthCallback.tsx | Non | Reçoit le token OAuth après redirect |
+| / | Dashboard.tsx | Oui | Tableau de bord |
+| /chat | Chat.tsx | Oui | Chatbot RAG |
+| /chat/:id | Chat.tsx | Oui | Conversation existante |
+| /agenda | Agenda.tsx | Oui | Calendrier unifié |
+| /files | Files.tsx | Oui | Arborescence documents |
+| /revision | Revision.tsx | Oui | Hub flashcards/QCM |
+| /revision/sheet | RevisionSheet.tsx | Oui | Affichage fiche HTML |
+| /settings | Settings.tsx | Oui | Connexion Outlook, thème |
+| /mail | Mail.tsx | Oui | Boîte de réception Outlook |
+| /profile | Profile.tsx | Oui | Stats et médailles utilisateur |
 
 ---
 
 # 3. Arborescence
 
 frontend/
-├── public/ (manifest.json, sw.js, icons/)
 ├── src/
-│   ├── App.tsx
+│   ├── App.tsx                      ← Router principal
 │   ├── main.tsx
 │   ├── index.css
-│   ├── pages/ (Login, Chat, Dashboard, Agenda, Files, Revision)
+│   ├── pages/
+│   │   ├── Login.tsx               ← Connexion Microsoft / Google / Dev
+│   │   ├── AuthCallback.tsx        ← Reçoit le token OAuth du backend
+│   │   ├── Dashboard.tsx           ← Vue d'ensemble du jour
+│   │   ├── Chat.tsx                ← Interface chatbot RAG
+│   │   ├── Agenda.tsx              ← Calendrier unifié
+│   │   ├── Files.tsx               ← Documents indexés
+│   │   ├── Revision.tsx            ← Hub révision (flashcards, QCM, fiches)
+│   │   ├── RevisionSheet.tsx       ← Affichage fiche HTML générée
+│   │   ├── Settings.tsx            ← Paramètres Outlook + thème
+│   │   ├── Mail.tsx                ← Boîte de réception Outlook
+│   │   └── Profile.tsx             ← Profil + médailles gamification
 │   ├── components/
 │   │   ├── layout/ (Sidebar, Layout)
 │   │   ├── chat/ (ChatWindow, MessageBubble, ChatInput, LoadingDots, SourcesAccordion, ChatSidebar)
@@ -230,11 +272,14 @@ frontend/
 │   │   ├── files/ (FileTree, FilePreview)
 │   │   ├── revision/ (FlashCard, QuizView)
 │   │   └── shared/ (SkeletonLoader, ErrorMessage)
-│   ├── services/api.ts
+│   ├── services/api.ts              ← Client HTTP (BASE_URL = localhost:8000 par défaut)
 │   ├── types/index.ts
 │   ├── hooks/ (useAuth, useChat, useAgenda)
-│   └── contexts/AuthContext.tsx
-├── .env.local (VITE_API_URL)
+│   ├── contexts/
+│   │   ├── AuthContext.tsx         ← Auth state (DEV_USER par défaut)
+│   │   └── ThemeContext.tsx        ← Thème clair/sombre
+│   └── utils/profileStats.ts       ← Calcul médailles depuis localStorage
+├── .env.local (VITE_API_URL=http://localhost:8000)
 ├── package.json
 ├── tsconfig.json
 └── vite.config.ts
@@ -243,19 +288,28 @@ frontend/
 
 # 4. Client API (services/api.ts)
 
+BASE_URL par défaut : http://localhost:8000 (surcharger via VITE_API_URL)
+
 Fonctions exposées :
-* sendQuestion(question) → ChatResponse
+* loginMicrosoft() / loginGoogle() → redirect URL
+* getMe() → User
+* logout() → void
+* sendQuestion(question, mode, conversationId) → ChatResponse
 * uploadPDF(file) → UploadResponse
-* getChatHistory() → Conversation[]
-* getAgendaEvents(start, end) → Event[]
+* getChatHistory() / getConversation(id) / deleteConversation(id)
+* searchConversations(q) → Conversation[]
+* getAgendaEvents(start, end) → AgendaEvent[]
 * getAgendaToday() → TodaySummary
 * getDashboardSummary() → DashboardData
 * getDashboardTasks() → Task[]
-* getDocumentTree(path) → FileItem[]
+* getDocumentList() / getDocumentTree(path) → FileItem[]
 * searchDocuments(query) → SearchResult[]
-* loginMicrosoft() → redirect URL
-* loginGoogle() → redirect URL
-* getMe() → User
+* deleteDocument(filename) / moveDocument(filename, theme, subfolder)
+* ingestFile(file, theme, subfolder) → {filename, chunks}
+* generateRevision(params) → RevisionResult
+* getOutlookStatus() / syncOutlook() / disconnectOutlook()
+* getMailInbox() / getMailMessage(id) / markMailRead(id) / deleteMail(id) / replyMail(id, comment)
+* getConnectionsStatus() / connectEmail() / connectCalendar() / syncEmail() / syncCalendar()
 
 ---
 

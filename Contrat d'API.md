@@ -81,27 +81,25 @@
 # --------------------------------------------------------------------------
 # GET /auth/callback/microsoft
 # --------------------------------------------------------------------------
-# Description : Callback OAuth Microsoft. Échange le code contre un token.
+# Description : Callback OAuth Microsoft. Échange le code, crée une session.
 # Auth requise : Non
 #
 # Query params :
 #   code  : string (requis) — code d'autorisation Microsoft
-#   state : string (requis) — doit correspondre au state envoyé
 #
-# Réponse 200 :
-#   {
-#     "access_token": "eyJ...",        ← JWT signé par le backend
-#     "token_type": "Bearer",
-#     "expires_in": 86400,             ← 24h en secondes
-#     "user": {
-#       "id": "uuid",
-#       "email": "arsene@entreprise.com",
-#       "name": "Arsène Dupont"
-#     }
-#   }
+# Comportement : redirige vers le frontend (pas de JSON retourné directement)
+#   Succès  → Redirect vers {FRONTEND_URL}/auth/callback?token=<session_token>
+#   Échec   → Redirect vers {FRONTEND_URL}/auth/callback?error=<code_erreur>
 #
-# Erreurs :
-#   400 — state invalide ou code expiré
+# session_token : token opaque aléatoire (secrets.token_urlsafe(32), 43 chars)
+#   - Ne contient aucune donnée Microsoft
+#   - Stocké en mémoire côté backend (perdu au redémarrage)
+#   - À inclure dans Authorization: Bearer <session_token> pour toutes les requêtes
+#
+# Erreurs (dans le redirect) :
+#   no_code              — paramètre code absent
+#   token_exchange_failed — MSAL a retourné une erreur
+#   internal_error       — erreur inattendue
 
 # --------------------------------------------------------------------------
 # POST /auth/login/google
@@ -114,18 +112,23 @@
 #     "auth_url": "https://accounts.google.com/o/oauth2/v2/auth?...",
 #     "state": "random_csrf_token"
 #   }
+#
+# Si Google non configuré (dev) :
+#   { "auth_url": "{FRONTEND_URL}/auth/callback?token=<dev_token>", "state": "dev-state" }
 
 # --------------------------------------------------------------------------
 # GET /auth/callback/google
 # --------------------------------------------------------------------------
-# Description : Callback OAuth Google
+# Description : Callback OAuth Google. Échange le code, crée une session.
 # Auth requise : Non
 #
-# Query params :
-#   code  : string (requis)
-#   state : string (requis)
+# Comportement : redirige vers le frontend (même pattern que Microsoft)
+#   Succès  → Redirect vers {FRONTEND_URL}/auth/callback?token=<session_token>
+#   Échec   → Redirect vers {FRONTEND_URL}/auth/callback?error=<code_erreur>
 #
-# Réponse 200 : même format que /auth/callback/microsoft
+# Échange : POST https://oauth2.googleapis.com/token
+# User info : GET https://www.googleapis.com/oauth2/v3/userinfo
+# Tokens sauvegardés dans oauth_tokens (provider="google")
 
 # --------------------------------------------------------------------------
 # GET /auth/me
@@ -603,25 +606,210 @@
 
 
 # ============================================================================
-# 6. HEALTH & SYSTÈME
+# 6. MAIL (Outlook)
+# ============================================================================
+# Nécessite une connexion Outlook active (token stocké dans oauth_tokens).
+# Toutes les routes retournent not_connected=true ou 401 si non connecté.
+# ============================================================================
+
+# --------------------------------------------------------------------------
+# GET /mail/inbox?count=50
+# --------------------------------------------------------------------------
+# Réponse 200 :
+#   {
+#     "emails": [
+#       {
+#         "id": "graph_message_id",
+#         "subject": "...",
+#         "from_name": "Jean Dupont",
+#         "from_email": "jean@example.com",
+#         "received_at": "2026-03-15T09:00:00Z",
+#         "preview": "Bonjour, ...",
+#         "body_html": "<html>...</html>",
+#         "body_type": "html",
+#         "is_read": false,
+#         "has_attachments": false,
+#         "importance": "normal"
+#       }
+#     ],
+#     "count": 50
+#   }
+# Si non connecté : { "emails": [], "count": 0, "not_connected": true }
+
+# --------------------------------------------------------------------------
+# GET /mail/inbox/{message_id}
+# --------------------------------------------------------------------------
+# Réponse 200 : { "email": { ... } }    (même format qu'un item de inbox)
+# Erreurs : 401 (non connecté), 502 (Graph API indisponible)
+
+# --------------------------------------------------------------------------
+# PATCH /mail/inbox/{message_id}/read
+# --------------------------------------------------------------------------
+# Body : { "is_read": true|false }
+# Réponse 200 : { "ok": true, "is_read": true }
+
+# --------------------------------------------------------------------------
+# DELETE /mail/inbox/{message_id}
+# --------------------------------------------------------------------------
+# Description : Déplace le mail dans la corbeille (Graph API)
+# Réponse 200 : { "ok": true }
+
+# --------------------------------------------------------------------------
+# POST /mail/inbox/{message_id}/reply
+# --------------------------------------------------------------------------
+# Body : { "comment": "Ma réponse..." }
+# Réponse 200 : { "ok": true }
+# Erreurs : 400 (commentaire vide), 401, 502
+
+
+# ============================================================================
+# 7. OUTLOOK SYNC
+# ============================================================================
+
+# --------------------------------------------------------------------------
+# GET /outlook/status
+# --------------------------------------------------------------------------
+# Réponse 200 :
+#   { "connected": true, "email": "...", "name": "...", "last_sync": "..." }
+#   { "connected": false }
+
+# --------------------------------------------------------------------------
+# POST /outlook/sync
+# --------------------------------------------------------------------------
+# Description : Indexe les mails et événements Outlook dans le RAG
+# Réponse 200 :
+#   { "mail_count": 100, "event_count": 30, "chunks_inserted": 145 }
+
+# --------------------------------------------------------------------------
+# DELETE /outlook/disconnect
+# --------------------------------------------------------------------------
+# Description : Supprime les tokens Outlook de Supabase
+# Réponse 200 : { "message": "Compte Outlook déconnecté." }
+
+
+# ============================================================================
+# 8. CONNEXIONS DIRECTES (IMAP + ICS)
+# ============================================================================
+
+# --------------------------------------------------------------------------
+# GET /connect/status
+# --------------------------------------------------------------------------
+# Réponse 200 :
+#   {
+#     "email": [{ "id": "uuid", "connected": true, "address": "...", "last_sync": "..." }],
+#     "calendar": [{ "id": "uuid", "connected": true, "label": "...", "last_sync": "..." }]
+#   }
+
+# --------------------------------------------------------------------------
+# POST /connect/email
+# --------------------------------------------------------------------------
+# Body : { "email": "...", "password": "...", "imap_server": null }
+# Réponse 200 : { "id": "uuid", "email": "..." }
+
+# --------------------------------------------------------------------------
+# POST /connect/calendar
+# --------------------------------------------------------------------------
+# Body : { "ics_url": "https://..." }
+# Réponse 200 : { "id": "uuid" }
+
+# --------------------------------------------------------------------------
+# POST /connect/sync/email   — Synchronise tous les emails IMAP dans le RAG
+# POST /connect/sync/calendar — Synchronise tous les ICS dans le RAG
+# POST /connect/sync          — Synchronise email + calendrier
+# --------------------------------------------------------------------------
+# Réponse 200 : { "count": int, "chunks_inserted": int }
+
+# --------------------------------------------------------------------------
+# DELETE /connect/email/{id}      — Déconnecte un compte email
+# DELETE /connect/calendar/{id}   — Déconnecte un calendrier
+# --------------------------------------------------------------------------
+
+
+# ============================================================================
+# 9. RÉVISION
+# ============================================================================
+
+# --------------------------------------------------------------------------
+# POST /revision/generate
+# --------------------------------------------------------------------------
+# Body :
+#   {
+#     "mode": "flashcard" | "quiz" | "summary",
+#     "filename": "cours.pdf" | null,
+#     "theme": "entreprise" | null,
+#     "subfolder": null,
+#     "count": 5,                     ← ignoré pour summary
+#     "difficulty": "easy" | "medium" | "hard"
+#   }
+#
+# Réponse 200 (flashcard/quiz) :
+#   {
+#     "mode": "flashcard",
+#     "items": [
+#       { "id": "1", "question": "...", "answer": "..." }
+#     ],
+#     "html": null
+#   }
+#
+# Réponse 200 (summary) :
+#   {
+#     "mode": "summary",
+#     "items": [],
+#     "html": "<h1 style=...>...</h1>"
+#   }
+#
+# Erreurs :
+#   404 — aucun document trouvé pour le filtre donné
+#   429 — rate limit OpenAI atteint
+#   500 — réponse JSON invalide d'OpenAI
+#
+# Cache : 1h en mémoire (clé = hash filename|theme|subfolder|mode|difficulty)
+
+
+# ============================================================================
+# 10. INGESTION DIRECTE
+# ============================================================================
+
+# --------------------------------------------------------------------------
+# POST /ingest
+# --------------------------------------------------------------------------
+# Content-Type : multipart/form-data
+# Champs : file (requis), theme (optionnel), subfolder (optionnel)
+# Réponse 200 :
+#   {
+#     "success": true,
+#     "filename": "cours.pdf",
+#     "chunks_ingested": 42,
+#     "processing_time_ms": 3200,
+#     "theme": "ecole"
+#   }
+# Le fichier est aussi sauvegardé dans backend/uploads/
+
+
+# ============================================================================
+# 11. HEALTH & SYSTÈME
 # ============================================================================
 
 # --------------------------------------------------------------------------
 # GET /health
 # --------------------------------------------------------------------------
-# Description : Healthcheck du backend
 # Auth requise : Non
-#
 # Réponse 200 :
 #   {
 #     "status": "ok",
-#     "version": "1.0.0",
-#     "timestamp": "2026-03-15T09:00:00Z"
+#     "version": "2.0.0",
+#     "services": {
+#       "openai": true,
+#       "supabase": true,
+#       "azure_oauth": true,
+#       "google_oauth": false,
+#       "jira": false
+#     }
 #   }
 
 
 # ============================================================================
-# 7. INTERFACE BASECONNECTOR (Partie 1 ↔ Partie 3)
+# 12. INTERFACE BASECONNECTOR (Partie 1 ↔ Partie 3)
 # ============================================================================
 # Ce contrat définit comment le backend (P1) appelle les connecteurs (P3).
 # Ce n'est PAS une API REST — c'est une interface Python interne.
