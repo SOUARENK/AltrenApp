@@ -44,19 +44,22 @@ def _get_supabase():
 
 # ── OAuth Flow ────────────────────────────────────────────────────────────────
 
+def _get_redirect_uri() -> str:
+    return os.getenv("AZURE_REDIRECT_URI", "http://localhost:8000/auth/callback/microsoft").strip()
+
+
 def get_auth_url() -> str:
     app = _get_msal_app()
-    redirect_uri = os.getenv("AZURE_REDIRECT_URI", "http://localhost:8000/auth/callback/microsoft")
     return app.get_authorization_request_url(
         scopes=SCOPES,
-        redirect_uri=redirect_uri,
+        redirect_uri=_get_redirect_uri(),
         prompt="select_account",
     )
 
 
 def exchange_code_for_tokens(code: str) -> dict:
     app = _get_msal_app()
-    redirect_uri = os.getenv("AZURE_REDIRECT_URI", "http://localhost:8000/auth/callback/microsoft")
+    redirect_uri = _get_redirect_uri()
     result = app.acquire_token_by_authorization_code(code=code, scopes=SCOPES, redirect_uri=redirect_uri)
     if "error" in result:
         raise ValueError(f"Erreur OAuth Microsoft : {result.get('error_description', result['error'])}")
